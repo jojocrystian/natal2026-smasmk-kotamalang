@@ -121,6 +121,10 @@ function doPost(e) {
         sheet.appendRow([k, val]);
         currentEvent[k] = val;
       }
+      var count = Math.max(0, ss.getSheetByName("Peserta").getLastRow() - 1);
+      currentEvent.registered_count = count;
+      currentEvent.quota = currentEvent.quota ? parseInt(currentEvent.quota) : 500;
+      currentEvent.registration_status = currentEvent.registration_status || "open";
       return jsonResponse({ message: "Acara berhasil diperbarui", event: currentEvent });
     }
 
@@ -128,8 +132,32 @@ function doPost(e) {
     if (action === "register" || action === "addManual") {
       var sheet = ss.getSheetByName("Peserta");
       var values = sheet.getDataRange().getValues();
+
+      if (action === "register") {
+        var sAcara = ss.getSheetByName("Acara");
+        var vAcara = sAcara.getDataRange().getValues();
+        var evObj = {};
+        for (var ea = 1; ea < vAcara.length; ea++) {
+          if (vAcara[ea][0]) evObj[vAcara[ea][0]] = vAcara[ea][1];
+        }
+        var regStatus = (evObj.registration_status || "open").toLowerCase();
+        var quotaMax = evObj.quota ? parseInt(evObj.quota) : 500;
+        var currentTotal = Math.max(0, values.length - 1);
+
+        if (regStatus === "closed") {
+          return jsonResponse({ error: "Pendaftaran saat ini telah ditutup oleh panitia." });
+        }
+        if (regStatus === "upcoming") {
+          return jsonResponse({ error: "Pendaftaran belum dibuka. Silakan tunggu jadwal pembukaan resmi." });
+        }
+        if (quotaMax > 0 && currentTotal >= quotaMax) {
+          return jsonResponse({ error: "Mohon maaf, kuota pendaftaran telah penuh (" + currentTotal + "/" + quotaMax + ")." });
+        }
+      }
+
       var email = (data.email || "").toLowerCase().trim();
       var fullName = (data.full_name || "").toLowerCase().trim();
+
 
       // Check duplicate email & name (Rule 1)
       for (var i = 1; i < values.length; i++) {

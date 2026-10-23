@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { 
-  User, School, Mail, ArrowLeft, Send, AlertCircle, Sparkles, Lock 
+  User, School, Mail, ArrowLeft, Send, AlertCircle, Sparkles, Lock, Users 
 } from 'lucide-react';
 import { registerParticipant, getEventInfo, getCachedEventInfo } from '../utils/api';
 import { getRegistrationStatus } from '../utils/dateFormatter';
@@ -152,6 +152,41 @@ export default function RegisterPage() {
             </p>
           </div>
 
+          {/* Live Quota & Status Bar */}
+          <div className="mb-5 p-3.5 bg-slate-800/80 border border-slate-700/80 rounded-2xl">
+            <div className="flex items-center justify-between text-xs sm:text-sm font-semibold mb-2">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <Users className="w-4 h-4 text-emerald-400" />
+                Kuota Peserta
+              </span>
+              <span className="text-white font-bold">
+                {regStatus.quotaText}
+              </span>
+            </div>
+            <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  regStatus.status === 'full' || regStatus.status === 'closed'
+                    ? 'bg-rose-500'
+                    : regStatus.status === 'almost_full'
+                    ? 'bg-amber-400'
+                    : 'bg-emerald-500'
+                }`}
+                style={{ width: `${Math.min(100, regStatus.percentage)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5">
+              <span>{regStatus.percentage}% Kuota Terisi</span>
+              <span>
+                {regStatus.status === 'full'
+                  ? 'Kuota Telah Habis'
+                  : regStatus.status === 'closed'
+                  ? 'Pendaftaran Ditutup'
+                  : `Tersisa ${regStatus.remaining} Kursi`}
+              </span>
+            </div>
+          </div>
+
           {/* If Registration is Closed or Full */}
           {!regStatus.canRegister && (
             <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3 text-xs sm:text-sm text-rose-300">
@@ -160,7 +195,9 @@ export default function RegisterPage() {
                 <strong>Pendaftaran Tidak Tersedia:</strong>{' '}
                 {regStatus.status === 'upcoming'
                   ? `Pendaftaran untuk acara "${event?.title || 'ini'}" saat ini belum dibuka. Silakan tunggu jadwal pembukaan resmi.`
-                  : `Saat ini pendaftaran untuk "${event?.title || 'ini'}" telah ditutup atau kuota peserta (${event?.registered_count || 0}/${event?.quota || 500}) telah terpenuhi.`}
+                  : regStatus.status === 'full'
+                  ? `Kuota peserta untuk "${event?.title || 'ini'}" (${regStatus.quotaText}) telah terpenuhi. Pendaftaran ditutup otomatis.`
+                  : `Saat ini pendaftaran untuk "${event?.title || 'ini'}" telah resmi ditutup oleh panitia.`}
               </div>
             </div>
           )}
@@ -282,7 +319,7 @@ export default function RegisterPage() {
                 {loading 
                   ? 'Memproses Pendaftaran & Tiket...' 
                   : !regStatus.canRegister 
-                    ? 'Pendaftaran Ditutup' 
+                    ? regStatus.buttonText 
                     : 'Daftar & Unduh Tiket QR'}
               </span>
             </button>

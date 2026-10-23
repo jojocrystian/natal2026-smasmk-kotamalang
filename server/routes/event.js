@@ -104,8 +104,16 @@ router.put('/', authenticateToken, requireAdmin, (req, res) => {
     );
   }
 
-  const updated = db.prepare('SELECT * FROM events ORDER BY id ASC LIMIT 1').get();
-  res.json({ message: 'Informasi acara berhasil diperbarui.', event: updated });
+  const updated = db.prepare('SELECT * FROM events ORDER BY id ASC LIMIT 1').get() || {};
+  const countRow = db.prepare('SELECT COUNT(*) as count FROM participants').get();
+  const registeredCount = countRow ? countRow.count : 0;
+  res.json({ 
+    message: 'Informasi acara berhasil diperbarui.', 
+    event: {
+      ...updated,
+      registered_count: registeredCount
+    } 
+  });
 });
 
 // DELETE remove flyer image (Admin only)

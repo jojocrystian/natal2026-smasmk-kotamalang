@@ -53,6 +53,23 @@ router.post('/register', async (req, res) => {
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedFullName = full_name.trim();
 
+    // Check Event Status & Quota
+    const event = db.prepare('SELECT * FROM events ORDER BY id ASC LIMIT 1').get() || {};
+    const regStatus = (event.registration_status || 'open').toLowerCase();
+    const quota = event.quota !== undefined && event.quota !== null ? Number(event.quota) : 500;
+    const countRow = db.prepare('SELECT COUNT(*) as count FROM participants').get();
+    const currentCount = countRow ? countRow.count : 0;
+
+    if (regStatus === 'closed') {
+      return res.status(400).json({ error: 'Pendaftaran saat ini telah resmi ditutup oleh panitia.' });
+    }
+    if (regStatus === 'upcoming') {
+      return res.status(400).json({ error: 'Pendaftaran belum dibuka. Silakan tunggu jadwal pembukaan resmi.' });
+    }
+    if (quota > 0 && currentCount >= quota) {
+      return res.status(400).json({ error: `Kuota pendaftaran telah penuh (${currentCount}/${quota} peserta).` });
+    }
+
     // RULE 1: Email and Nama Lengkap already registered CANNOT register again
     const existing = db.prepare(`
       SELECT code, full_name, email FROM participants 

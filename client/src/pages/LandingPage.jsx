@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { 
   Calendar, Clock, MapPin, ExternalLink, ArrowRight, 
   CheckCircle2, AlertCircle, RefreshCw, MessageCircle, 
-  HelpCircle, Sparkles, Ticket, ShieldCheck, ChevronDown, UserCheck
+  HelpCircle, Sparkles, Ticket, ShieldCheck, ChevronDown, UserCheck, Users 
 } from 'lucide-react';
+
 import { getEventInfo, getCachedEventInfo } from '../utils/api';
 import { formatIndonesianDate, getRegistrationStatus } from '../utils/dateFormatter';
 import CheckTicketModal from '../components/CheckTicketModal';
@@ -149,10 +150,11 @@ export default function LandingPage() {
           <div className="h-7 w-40 bg-slate-800 rounded-full" />
           <div className="h-10 sm:h-14 w-4/5 bg-slate-800 rounded-2xl" />
           <div className="h-16 w-full max-w-xl bg-slate-800/60 rounded-xl" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="h-24 bg-slate-800 rounded-2xl" />
             <div className="h-24 bg-slate-800 rounded-2xl" />
-            <div className="h-24 col-span-2 sm:col-span-1 bg-slate-800 rounded-2xl" />
+            <div className="h-24 bg-slate-800 rounded-2xl" />
+            <div className="h-24 bg-slate-800 rounded-2xl" />
           </div>
         </div>
       ) : error ? (
@@ -203,8 +205,8 @@ export default function LandingPage() {
                   {renderFlyerCard()}
                 </div>
 
-                {/* Event Metadata Cards (Informasi) */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5 pt-0.5">
+                {/* Event Metadata Cards (Informasi: Tanggal, Waktu, Kuota Peserta, Lokasi) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 pt-0.5">
                   
                   {/* Card Tanggal */}
                   <div className="bg-slate-900/90 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col justify-between gap-1 shadow-sm">
@@ -212,7 +214,7 @@ export default function LandingPage() {
                       <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden="true" />
                       <span>Tanggal</span>
                     </div>
-                    <div className="text-white font-extrabold text-xs sm:text-base leading-snug break-words mt-1">
+                    <div className="text-white font-extrabold text-xs sm:text-sm leading-snug break-words mt-1">
                       {eventDateFormatted}
                     </div>
                   </div>
@@ -223,13 +225,45 @@ export default function LandingPage() {
                       <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden="true" />
                       <span>Waktu</span>
                     </div>
-                    <div className="text-white font-extrabold text-xs sm:text-base leading-snug mt-1">
+                    <div className="text-white font-extrabold text-xs sm:text-sm leading-snug mt-1">
                       {eventTime}
                     </div>
                   </div>
 
-                  {/* Card Lokasi - Spans full width on mobile */}
-                  <div className="col-span-2 sm:col-span-1 bg-slate-900/90 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col justify-between gap-1 shadow-sm">
+                  {/* Card Kuota Peserta */}
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col justify-between gap-1 shadow-sm">
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-400 text-xs sm:text-sm font-bold">
+                      <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden="true" />
+                      <span>Kuota Peserta</span>
+                    </div>
+                    <div>
+                      <div className="text-white font-extrabold text-xs sm:text-sm leading-snug mt-1">
+                        {regStatus.quotaText}
+                      </div>
+                      <div className="w-full bg-slate-800 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            regStatus.status === 'full' || regStatus.status === 'closed'
+                              ? 'bg-rose-500'
+                              : regStatus.status === 'almost_full'
+                              ? 'bg-amber-400'
+                              : 'bg-emerald-500'
+                          }`}
+                          style={{ width: `${Math.min(100, regStatus.percentage)}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-1">
+                        {regStatus.status === 'full'
+                          ? 'Kuota Penuh'
+                          : regStatus.status === 'closed'
+                          ? 'Pendaftaran Ditutup'
+                          : `Sisa ${regStatus.remaining} Kursi`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Lokasi */}
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col justify-between gap-1 shadow-sm">
                     <div>
                       <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-400 text-xs sm:text-sm font-bold">
                         <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden="true" />
@@ -246,7 +280,7 @@ export default function LandingPage() {
                       className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-emerald-400 hover:text-emerald-300 mt-2 transition-colors group"
                       aria-label="Buka lokasi acara di Google Maps"
                     >
-                      <span>Buka di Google Maps</span>
+                      <span>Buka Maps</span>
                       <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </a>
                   </div>
@@ -254,31 +288,43 @@ export default function LandingPage() {
                 </div>
 
                 {/* Call To Action Buttons - Full width on Mobile */}
-                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 w-full">
-                  {regStatus.canRegister ? (
-                    <Link
-                      to="/daftar"
-                      className="min-h-[46px] sm:min-h-[50px] px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base shadow-xl shadow-emerald-900/40 hover:shadow-emerald-900/60 transition-all hover:scale-[1.01] flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none w-full sm:w-auto"
-                    >
-                      <span>{regStatus.buttonText}</span>
-                      <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
-                    </Link>
-                  ) : (
-                    <button
-                      disabled
-                      className="min-h-[46px] sm:min-h-[50px] px-8 py-3 bg-slate-800 text-slate-500 border border-slate-700/80 rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base cursor-not-allowed flex items-center justify-center gap-2 opacity-80 w-full sm:w-auto"
-                    >
-                      <span>{regStatus.buttonText}</span>
-                    </button>
-                  )}
+                <div className="pt-2 space-y-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4 w-full">
+                    {regStatus.canRegister ? (
+                      <Link
+                        to="/daftar"
+                        className="min-h-[46px] sm:min-h-[50px] px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base shadow-xl shadow-emerald-900/40 hover:shadow-emerald-900/60 transition-all hover:scale-[1.01] flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none w-full sm:w-auto"
+                      >
+                        <span>{regStatus.buttonText}</span>
+                        <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
+                      </Link>
+                    ) : (
+                      <button
+                        disabled
+                        className="min-h-[46px] sm:min-h-[50px] px-8 py-3 bg-slate-800 text-slate-400 border border-slate-700/80 rounded-xl sm:rounded-2xl font-bold text-sm sm:text-base cursor-not-allowed flex items-center justify-center gap-2 opacity-80 w-full sm:w-auto"
+                      >
+                        <span>{regStatus.buttonText}</span>
+                      </button>
+                    )}
 
-                  <button
-                    onClick={() => setShowCheckTicket(true)}
-                    className="min-h-[46px] sm:min-h-[50px] px-6 py-3 bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-800 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-base transition-colors flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none cursor-pointer w-full sm:w-auto"
-                  >
-                    <Ticket className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-                    <span>Cek Tiket Saya</span>
-                  </button>
+                    <button
+                      onClick={() => setShowCheckTicket(true)}
+                      className="min-h-[46px] sm:min-h-[50px] px-6 py-3 bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-800 rounded-xl sm:rounded-2xl font-semibold text-sm sm:text-base transition-colors flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none cursor-pointer w-full sm:w-auto"
+                    >
+                      <Ticket className="w-4 h-4 text-emerald-400" aria-hidden="true" />
+                      <span>Cek Tiket Saya</span>
+                    </button>
+                  </div>
+
+                  {!regStatus.canRegister && (
+                    <p className="text-xs text-amber-400/90 font-medium">
+                      {regStatus.status === 'upcoming'
+                        ? 'ℹ️ Pendaftaran belum dibuka oleh panitia. Pantau terus halaman ini.'
+                        : regStatus.status === 'full'
+                        ? 'ℹ️ Kuota pendaftaran telah mencapai batas maksimal.'
+                        : 'ℹ️ Pendaftaran telah ditutup oleh panitia.'}
+                    </p>
+                  )}
                 </div>
 
                 {/* High Contrast Notice Box */}
