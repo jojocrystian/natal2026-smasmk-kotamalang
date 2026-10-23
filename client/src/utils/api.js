@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export function getToken() {
   return localStorage.getItem('presensi_token');
