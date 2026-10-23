@@ -54,7 +54,9 @@ function doPost(e) {
       var values = sheet.getDataRange().getValues();
       var event = {};
       for (var i = 1; i < values.length; i++) {
-        event[values[i][0]] = values[i][1];
+        if (values[i][0]) {
+          event[String(values[i][0]).trim()] = values[i][1];
+        }
       }
       var sheetP = ss.getSheetByName("Peserta");
       var count = Math.max(0, sheetP.getLastRow() - 1);
@@ -109,10 +111,15 @@ function doPost(e) {
       var currentEvent = {};
       for (var i = 1; i < values.length; i++) {
         if (values[i][0]) {
-          currentEvent[values[i][0]] = values[i][1];
+          currentEvent[String(values[i][0]).trim()] = values[i][1];
         }
       }
       var keys = ["title", "date", "time", "location", "description", "flyer_url", "quota", "registration_status", "maps_url", "whatsapp"];
+      for (var dk in data) {
+        if (dk !== "action" && keys.indexOf(dk) === -1) {
+          keys.push(dk);
+        }
+      }
       sheet.clearContents();
       sheet.appendRow(["Key", "Value"]);
       for (var j = 0; j < keys.length; j++) {
@@ -523,12 +530,25 @@ function initSheets(ss) {
     sAcara = ss.insertSheet("Acara");
     sAcara.appendRow(["Key", "Value"]);
     sAcara.getRange(1, 1, 1, 2).setFontWeight("bold").setBackground("#8b5cf6").setFontColor("#ffffff");
-    sAcara.appendRow(["title", "Natal Bersama SMA/SMK Kota Malang 2026"]);
-    sAcara.appendRow(["date", "25 Oktober 2026"]);
-    sAcara.appendRow(["time", "08:00 - 13:00 WIB"]);
-    sAcara.appendRow(["location", "Auditorium Utama & Convention Hall"]);
-    sAcara.appendRow(["description", "Acara akbar perayaan Natal bersama pelajar SMA/SMK se-Kota Malang."]);
+    sAcara.appendRow(["title", "Natal SMA & SMK Kota Malang 2026"]);
+    sAcara.appendRow(["date", "2026-01-28"]);
+    sAcara.appendRow(["time", "09:00 - 13:00 WIB"]);
+    sAcara.appendRow(["location", "Auditorium NICC, Jl. Kolonel Sugiono No. 24, Sukun, Kota Malang"]);
+    sAcara.appendRow(["description", "Ibadah dan Perayaan Natal bersama seluruh pelajar SMA dan SMK se-Kota Malang 2026."]);
     sAcara.appendRow(["flyer_url", ""]);
+    sAcara.appendRow(["quota", "500"]);
+    sAcara.appendRow(["registration_status", "open"]);
+    sAcara.appendRow(["maps_url", ""]);
+    sAcara.appendRow(["whatsapp", ""]);
     sAcara.setFrozenRows(1);
+  } else {
+    // If Acara tab already exists, ensure quota and registration_status rows exist
+    var aVals = sAcara.getDataRange().getValues();
+    var existingKeys = {};
+    for (var k = 1; k < aVals.length; k++) {
+      if (aVals[k][0]) existingKeys[String(aVals[k][0]).trim()] = true;
+    }
+    if (!existingKeys["quota"]) sAcara.appendRow(["quota", "500"]);
+    if (!existingKeys["registration_status"]) sAcara.appendRow(["registration_status", "open"]);
   }
 }

@@ -191,13 +191,89 @@ export async function deleteUser(id) {
   });
 }
 
+// Helper to encode registration status and quota into description as universal cloud metadata
+export function attachEventMeta(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const meta = {
+    registration_status: payload.registration_status || 'open',
+    quota: payload.quota !== undefined && payload.quota !== null ? Number(payload.quota) : 500
+  };
+  
+  // Clean existing META tags from description
+  let cleanDesc = (payload.description || '').replace(/\s*<!--META:.*?-->\s*/g, '').trim();
+  const metaTag = `\n<!--META:${JSON.stringify(meta)}-->`;
+  
+  return {
+    ...payload,
+    description: cleanDesc + metaTag
+  };
+}
+
+// Helper to parse registration status and quota from event object or meta tag or local storage
+export function parseEventMeta(event) {
+  if (!event || typeof event !== 'object') return event;
+  
+  let regStatus = event.registration_status;
+  let quota = event.quota;
+
+  // 1. Try to extract from description <!--META:...-->
+  if (event.description && typeof event.description === 'string' && event.description.includes('<!--META:')) {
+    try {
+      const match = event.description.match(/<!--META:(.*?)-->/);
+      if (match && match[1]) {
+        const parsed = JSON.parse(match[1]);
+        if (parsed.registration_status) {
+          regStatus = parsed.registration_status;
+        }
+        if (parsed.quota !== undefined && parsed.quota !== null) {
+          quota = Number(parsed.quota);
+        }
+      }
+      // Strip tag so UI displays clean description
+      event.clean_description = event.description.replace(/\s*<!--META:.*?-->\s*/g, '').trim();
+      event.description = event.clean_description;
+    } catch (e) {
+      console.warn('Error parsing event meta tag:', e);
+    }
+  }
+
+  // 2. LocalStorage override / fallback
+  const localStatus = localStorage.getItem('app_registration_status');
+  const localQuota = localStorage.getItem('app_quota');
+
+  if (regStatus && regStatus !== 'open') {
+    // If we have an explicit non-open status, sync to localStorage
+    try { localStorage.setItem('app_registration_status', regStatus); } catch {}
+  } else if ((!regStatus || regStatus === 'open') && localStatus) {
+    // If server returned default open or missing, but local has explicit setting, use local
+    regStatus = localStatus;
+  }
+
+  if (quota !== undefined && quota !== null && !isNaN(Number(quota))) {
+    try { localStorage.setItem('app_quota', String(quota)); } catch {}
+  } else if (localQuota) {
+    quota = Number(localQuota);
+  }
+
+  event.registration_status = regStatus || 'open';
+  event.quota = quota !== undefined && quota !== null ? Number(quota) : 500;
+  return event;
+}
+
 // Event Information & Realtime Cross-Page Synchronization
 export function broadcastEventUpdate(eventObj) {
   try {
     if (eventObj) {
-      localStorage.setItem('cached_event_info', JSON.stringify(eventObj));
+      const parsed = parseEventMeta({ ...eventObj });
+      if (parsed.registration_status) {
+        localStorage.setItem('app_registration_status', parsed.registration_status);
+      }
+      if (parsed.quota !== undefined && parsed.quota !== null) {
+        localStorage.setItem('app_quota', String(parsed.quota));
+      }
+      localStorage.setItem('cached_event_info', JSON.stringify(parsed));
       localStorage.setItem('event_info_last_updated', Date.now().toString());
-      window.dispatchEvent(new CustomEvent('event_info_updated', { detail: eventObj }));
+      window.dispatchEvent(new CustomEvent('event_info_updated', { detail: parsed }));
     }
   } catch (e) {
     console.warn('Event broadcast error:', e);
@@ -207,7 +283,9 @@ export function broadcastEventUpdate(eventObj) {
 export function getCachedEventInfo() {
   try {
     const raw = localStorage.getItem('cached_event_info');
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parseEventMeta(parsed);
   } catch {
     return null;
   }
@@ -221,27 +299,34 @@ export async function getEventInfo() {
     data = await apiFetch('/event');
   }
   if (data?.event) {
+    data.event = parseEventMeta(data.event);
     broadcastEventUpdate(data.event);
   }
   return data;
 }
 
 export async function updateEventInfo(payload) {
+  const preparedPayload = attachEventMeta(payload);
+  if (preparedPayload.registration_status) {
+    try { localStorage.setItem('app_registration_status', preparedPayload.registration_status); } catch {}
+  }
+  if (preparedPayload.quota !== undefined) {
+    try { localStorage.setItem('app_quota', String(preparedPayload.quota)); } catch {}
+  }
+
   let res;
   if (isSheetsMode()) {
-    res = await callSheets('updateEvent', payload);
+    res = await callSheets('updateEvent', preparedPayload);
   } else {
     res = await apiFetch('/event', {
       method: 'PUT',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(preparedPayload)
     });
   }
-  if (res?.event) {
-    broadcastEventUpdate(res.event);
-  } else {
-    broadcastEventUpdate(payload);
-  }
-  return res;
+
+  const finalEvent = parseEventMeta(res?.event || preparedPayload);
+  broadcastEventUpdate(finalEvent);
+  return { ...res, event: finalEvent };
 }
 
 export async function uploadFlyer(file) {
