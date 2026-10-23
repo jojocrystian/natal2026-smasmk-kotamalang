@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
-import { login } from '../utils/api';
+import { ShieldCheck, Lock, User, ArrowRight, AlertCircle, FileSpreadsheet } from 'lucide-react';
+import { login, isSheetsMode } from '../utils/api';
+import ConnectSheetsModal from '../components/ConnectSheetsModal';
 
 export default function AdminLoginPage({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showSheetsModal, setShowSheetsModal] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,7 +25,11 @@ export default function AdminLoginPage({ onLoginSuccess }) {
         onLoginSuccess(data.user);
       }
     } catch (err) {
-      setError(err.message || 'Login gagal. Periksa kembali username & password.');
+      if (err.message && err.message.includes('405')) {
+        setError('Server backend belum terhubung (Error 405). Silakan hubungkan Google Spreadsheet sebagai database online Anda di bawah.');
+      } else {
+        setError(err.message || 'Login gagal. Periksa kembali username & password.');
+      }
     } finally {
       setLoading(false);
     }
@@ -37,6 +43,12 @@ export default function AdminLoginPage({ onLoginSuccess }) {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8">
+      
+      <ConnectSheetsModal
+        isOpen={showSheetsModal}
+        onClose={() => setShowSheetsModal(false)}
+      />
+
       <div className="w-full max-w-md">
         
         {/* Card */}
@@ -59,9 +71,21 @@ export default function AdminLoginPage({ onLoginSuccess }) {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-5 p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2.5 text-xs text-red-400">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
+            <div className="mb-5 p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl flex flex-col gap-2 text-xs text-red-400">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+              {error.includes('405') && (
+                <button
+                  type="button"
+                  onClick={() => setShowSheetsModal(true)}
+                  className="mt-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Hubungkan Google Spreadsheet Sekarang
+                </button>
+              )}
             </div>
           )}
 
@@ -108,14 +132,26 @@ export default function AdminLoginPage({ onLoginSuccess }) {
           </form>
 
           {/* Quick Demo Fill Button */}
-          <div className="mt-6 pt-5 border-t border-slate-800 text-center">
-            <span className="text-[11px] text-slate-400 block mb-2 font-medium">Uji Coba Cepat (Akun Admin):</span>
+          <div className="mt-6 pt-5 border-t border-slate-800 text-center space-y-3">
+            <div>
+              <span className="text-[11px] text-slate-400 block mb-1.5 font-medium">Akun Administrator Default:</span>
+              <button
+                type="button"
+                onClick={handleQuickFill}
+                className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-mono text-purple-300 border border-slate-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <span>Gunakan Akun: admin / admin123</span>
+              </button>
+            </div>
+
+            {/* Connect Spreadsheet trigger */}
             <button
               type="button"
-              onClick={handleQuickFill}
-              className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-mono text-purple-300 border border-slate-700 transition-colors flex items-center justify-center gap-2"
+              onClick={() => setShowSheetsModal(true)}
+              className="text-xs text-slate-400 hover:text-emerald-400 flex items-center justify-center gap-1.5 mx-auto transition-colors pt-1"
             >
-              <span>Gunakan Akun: admin / admin123</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isSheetsMode() ? 'Database: Google Spreadsheet Terhubung' : 'Gunakan Google Spreadsheet sebagai Database'}</span>
             </button>
           </div>
 
