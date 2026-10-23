@@ -255,14 +255,45 @@ export async function registerParticipant(payload) {
 
 export async function checkTicket(query) {
   let result;
+  const cleanQ = (query || '').trim().toLowerCase();
+
   if (isSheetsMode()) {
-    result = await callSheets('checkTicket', { query });
+    try {
+      result = await callSheets('checkTicket', { query });
+    } catch (err) {
+      // Automatic fallback if the Google Apps Script deployment has not been updated yet
+      if (err.message && (err.message.toLowerCase().includes('tidak dikenali') || err.message.toLowerCase().includes('action'))) {
+        const pRes = await callSheets('getParticipants', { search: query });
+        const list = pRes.participants || [];
+        const found = list.find(p => {
+          const email = (p.email || '').toLowerCase().trim();
+          const code = (p.code || '').toLowerCase().trim();
+          const fullName = (p.full_name || '').toLowerCase().trim();
+          const nickname = (p.nickname || '').toLowerCase().trim();
+          return email === cleanQ || code === cleanQ || fullName === cleanQ || nickname === cleanQ || (cleanQ.length >= 4 && fullName.includes(cleanQ));
+        });
+
+        if (!found) {
+          throw new Error('Tiket tidak ditemukan. Pastikan email, kode tiket, atau nama lengkap sama persis saat mendaftar.');
+        }
+
+        const evRes = await callSheets('getEvent').catch(() => ({ event: {} }));
+        result = {
+          success: true,
+          participant: found,
+          event: evRes.event || {}
+        };
+      } else {
+        throw err;
+      }
+    }
   } else {
     result = await apiFetch('/participants/check-ticket', {
       method: 'POST',
       body: JSON.stringify({ query })
     });
   }
+
   if (result.participant) {
     result.participant = await attachQrCode(result.participant);
   }
