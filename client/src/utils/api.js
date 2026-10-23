@@ -2,6 +2,8 @@ import QRCode from 'qrcode';
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
+export const DEFAULT_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxK2MPG-0HsnUJXKGX0S6yAlfOrFz4DVUJsG_buZQ8YxMAo1AqPiNn8TvxY0wcLOogD/exec';
+
 export function getSheetsUrl() {
   const local = localStorage.getItem('sheets_api_url');
   if (local && local.trim().startsWith('http')) return local.trim();
@@ -9,7 +11,7 @@ export function getSheetsUrl() {
   if (envSheets && envSheets.trim().startsWith('http')) return envSheets.trim();
   const envBase = import.meta.env.VITE_API_BASE_URL;
   if (envBase && envBase.includes('script.google.com')) return envBase.trim();
-  return '';
+  return DEFAULT_SHEETS_URL;
 }
 
 export function setSheetsUrl(url) {
@@ -217,56 +219,67 @@ export function parseEventMeta(event) {
   let quota = event.quota;
 
   // 1. Try to extract from description <!--META:...-->
+  let metaStatus = null;
+  let metaQuota = null;
   if (event.description && typeof event.description === 'string' && event.description.includes('<!--META:')) {
     try {
       const match = event.description.match(/<!--META:(.*?)-->/);
       if (match && match[1]) {
         const parsed = JSON.parse(match[1]);
         if (parsed.registration_status) {
-          regStatus = parsed.registration_status;
+          metaStatus = parsed.registration_status;
         }
         if (parsed.quota !== undefined && parsed.quota !== null) {
-          quota = Number(parsed.quota);
+          metaQuota = Number(parsed.quota);
         }
       }
-      // Strip tag so UI displays clean description
-      event.clean_description = event.description.replace(/\s*<!--META:.*?-->\s*/g, '').trim();
-      event.description = event.clean_description;
     } catch (e) {
       console.warn('Error parsing event meta tag:', e);
     }
   }
 
-  // 2. LocalStorage override / fallback
-  const localStatus = localStorage.getItem('app_registration_status');
-  const localQuota = localStorage.getItem('app_quota');
+  // Strip meta tag so UI always displays clean description
+  event.clean_description = (event.description || '').replace(/\s*<!--META:.*?-->\s*/g, '').trim();
+  event.description = event.clean_description;
 
-  if (regStatus && regStatus !== 'open') {
-    // If we have an explicit non-open status, sync to localStorage
-    try { localStorage.setItem('app_registration_status', regStatus); } catch {}
-  } else if ((!regStatus || regStatus === 'open') && localStatus) {
-    // If server returned default open or missing, but local has explicit setting, use local
+  // 2. Resolve Status: meta tag (cloud truth) > explicit server status > local storage > 'open'
+  const localStatus = localStorage.getItem('app_registration_status');
+  if (metaStatus) {
+    regStatus = metaStatus;
+  } else if (!regStatus && localStatus) {
     regStatus = localStatus;
   }
+  regStatus = regStatus || 'open';
+  try { localStorage.setItem('app_registration_status', regStatus); } catch {}
 
-  if (quota !== undefined && quota !== null && !isNaN(Number(quota))) {
-    try { localStorage.setItem('app_quota', String(quota)); } catch {}
-  } else if (localQuota) {
+  // 3. Resolve Quota: meta tag (cloud truth) > server quota > local storage > 500
+  const localQuota = localStorage.getItem('app_quota');
+  if (metaQuota !== null && !isNaN(metaQuota)) {
+    quota = metaQuota;
+  } else if ((quota === undefined || quota === null || isNaN(Number(quota))) && localQuota) {
     quota = Number(localQuota);
   }
+  quota = quota !== undefined && quota !== null && !isNaN(Number(quota)) ? Number(quota) : 500;
+  try { localStorage.setItem('app_quota', String(quota)); } catch {}
 
+  // 4. Resolve Registered Count: real count from participants > local count > 0
   const localRegisteredCount = localStorage.getItem('app_registered_count');
   if (event.registered_count !== undefined && event.registered_count !== null && !isNaN(Number(event.registered_count))) {
-    try { localStorage.setItem('app_registered_count', String(event.registered_count)); } catch {}
-    event.registered_count = Number(event.registered_count);
-  } else if (localRegisteredCount) {
+    const countNum = Number(event.registered_count);
+    if (countNum === 0 && localRegisteredCount && Number(localRegisteredCount) > 0) {
+      event.registered_count = Number(localRegisteredCount);
+    } else {
+      event.registered_count = countNum;
+      try { localStorage.setItem('app_registered_count', String(countNum)); } catch {}
+    }
+  } else if (localRegisteredCount && !isNaN(Number(localRegisteredCount))) {
     event.registered_count = Number(localRegisteredCount);
   } else {
     event.registered_count = 0;
   }
 
-  event.registration_status = regStatus || 'open';
-  event.quota = quota !== undefined && quota !== null ? Number(quota) : 500;
+  event.registration_status = regStatus;
+  event.quota = quota;
   return event;
 }
 
@@ -308,13 +321,23 @@ export async function getEventInfo() {
   let data;
   if (isSheetsMode()) {
     data = await callSheets('getEvent');
-    // Ensure real live participant count from sheet "Peserta" if getEvent didn't include it or returned 0
-    if (!data?.event?.registered_count) {
+    // Ensure real live participant count from sheet "Peserta"
+    try {
+      const pRes = await callSheets('getParticipants');
+      const liveCount = (pRes && Array.isArray(pRes.participants)) 
+        ? pRes.participants.length 
+        : (pRes?.totalCount !== undefined ? Number(pRes.totalCount) : null);
+      if (liveCount !== null && !isNaN(liveCount)) {
+        if (!data.event) data.event = {};
+        data.event.registered_count = liveCount;
+      }
+    } catch (pe) {
       try {
         const statsRes = await callSheets('getStats');
-        if (statsRes?.stats?.total !== undefined) {
+        const total = statsRes?.total !== undefined ? statsRes.total : (statsRes?.stats?.total);
+        if (total !== undefined && !isNaN(Number(total))) {
           if (!data.event) data.event = {};
-          data.event.registered_count = Number(statsRes.stats.total);
+          data.event.registered_count = Number(total);
         }
       } catch (se) {}
     }

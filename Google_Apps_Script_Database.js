@@ -17,11 +17,37 @@
  * 10. Tempelkan URL tersebut ke website Anda (di menu Hubungkan Spreadsheet / Vercel Settings).
  */
 
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    initSheets(ss);
+    var pSheet = ss.getSheetByName("Peserta");
+    var pCount = Math.max(0, pSheet.getLastRow() - 1);
+    var aSheet = ss.getSheetByName("Acara");
+    var aVals = aSheet.getDataRange().getValues();
+    var ev = {};
+    for (var i = 1; i < aVals.length; i++) {
+      if (aVals[i][0]) ev[String(aVals[i][0]).trim()] = aVals[i][1];
+    }
+    ev.registered_count = pCount;
+    return jsonResponse({ status: "success", message: "Google Apps Script API Aktif", event: ev });
+  } catch (err) {
+    return jsonResponse({ error: String(err) }, 500);
+  }
+}
+
 function doPost(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var data = JSON.parse(e.postData.contents);
-    var action = data.action;
+    var data = {};
+    if (e && e.postData && e.postData.contents) {
+      try {
+        data = JSON.parse(e.postData.contents);
+      } catch (pe) {
+        data = {};
+      }
+    }
+    var action = data.action || (e && e.parameter ? e.parameter.action : "");
 
     initSheets(ss);
 
@@ -63,6 +89,18 @@ function doPost(e) {
       event.registered_count = count;
       event.quota = event.quota ? parseInt(event.quota) : 500;
       event.registration_status = event.registration_status || "open";
+
+      if (event.description && String(event.description).indexOf("<!--META:") !== -1) {
+        try {
+          var m = String(event.description).match(/<!--META:(.*?)-->/);
+          if (m && m[1]) {
+            var metaP = JSON.parse(m[1]);
+            if (metaP.registration_status) event.registration_status = metaP.registration_status;
+            if (metaP.quota !== undefined && metaP.quota !== null) event.quota = parseInt(metaP.quota);
+          }
+        } catch(me) {}
+      }
+
       return jsonResponse({ event: event });
     }
 
@@ -150,6 +188,17 @@ function doPost(e) {
         var regStatus = (evObj.registration_status || "open").toLowerCase();
         var quotaMax = evObj.quota ? parseInt(evObj.quota) : 500;
         var currentTotal = Math.max(0, values.length - 1);
+
+        if (evObj.description && String(evObj.description).indexOf("<!--META:") !== -1) {
+          try {
+            var mMatch = String(evObj.description).match(/<!--META:(.*?)-->/);
+            if (mMatch && mMatch[1]) {
+              var parsedM = JSON.parse(mMatch[1]);
+              if (parsedM.registration_status) regStatus = String(parsedM.registration_status).toLowerCase();
+              if (parsedM.quota !== undefined && parsedM.quota !== null) quotaMax = parseInt(parsedM.quota);
+            }
+          } catch(me) {}
+        }
 
         if (regStatus === "closed") {
           return jsonResponse({ error: "Pendaftaran saat ini telah ditutup oleh panitia." });
@@ -348,7 +397,8 @@ function doPost(e) {
 
       return jsonResponse({
         participants: filtered,
-        totalCount: filtered.length,
+        totalCount: list.length,
+        filteredCount: filtered.length,
         availableSchools: Object.keys(schoolsSet).sort()
       });
     }

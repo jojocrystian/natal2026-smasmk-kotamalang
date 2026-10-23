@@ -276,6 +276,15 @@ export default function AdminDashboard() {
       });
       setParticipants(data.participants || []);
       setAvailableSchools(data.availableSchools || []);
+
+      const liveCount = data.totalCount !== undefined ? Number(data.totalCount) : (Array.isArray(data.participants) ? data.participants.length : null);
+      if (liveCount !== null && !isNaN(liveCount)) {
+        const currentEv = getCachedEventInfo() || {};
+        broadcastEventUpdate({
+          ...currentEv,
+          registered_count: liveCount
+        });
+      }
     } catch (e) {
       console.warn(e);
     } finally {
@@ -436,6 +445,42 @@ export default function AdminDashboard() {
       showNotification('success', res.message || `Tiket berhasil dikirim ke ${p.email}!`);
     } catch (err) {
       showNotification('error', err.message || 'Gagal mengirim email tiket.');
+    }
+  };
+
+  // Instant Cloud Sync for Status & Quota
+  const handleQuickStatusChange = async (newStatus) => {
+    setEventData(prev => ({ ...prev, registration_status: newStatus }));
+    try {
+      localStorage.setItem('app_registration_status', newStatus);
+      const updatedPayload = {
+        ...eventData,
+        registration_status: newStatus
+      };
+      broadcastEventUpdate(updatedPayload);
+      await updateEventInfo(updatedPayload);
+      const statusLabel = newStatus === 'open' ? '🟢 Dibuka Resmi' : newStatus === 'upcoming' ? '🔵 Segera Dibuka' : '🔴 Ditutup';
+      showNotification('success', `Status pendaftaran berhasil diubah ke: ${statusLabel} & tersinkron ke semua halaman.`);
+    } catch (err) {
+      console.warn('Auto-save status error:', err);
+    }
+  };
+
+  const handleQuickQuotaChange = async (newQuota) => {
+    const qNum = Number(newQuota);
+    if (isNaN(qNum) || qNum <= 0) return;
+    setEventData(prev => ({ ...prev, quota: qNum }));
+    try {
+      localStorage.setItem('app_quota', String(qNum));
+      const updatedPayload = {
+        ...eventData,
+        quota: qNum
+      };
+      broadcastEventUpdate(updatedPayload);
+      await updateEventInfo(updatedPayload);
+      showNotification('success', `Kuota peserta berhasil diubah ke: ${qNum} kursi & tersinkron ke semua halaman.`);
+    } catch (err) {
+      console.warn('Auto-save quota error:', err);
     }
   };
 
@@ -1621,33 +1666,27 @@ export default function AdminDashboard() {
                       min="1"
                       value={eventData.quota}
                       onChange={(e) => setEventData({ ...eventData, quota: Number(e.target.value) })}
+                      onBlur={(e) => handleQuickQuotaChange(e.target.value)}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
+                    <span className="text-[11px] text-slate-400 block">
+                      Jumlah batas maksimal pendaftar (default: 500 / 1500).
+                    </span>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-300">Status Pendaftaran Acara *</label>
                     <select
                       value={eventData.registration_status}
-                      onChange={(e) => {
-                        const newStatus = e.target.value;
-                        setEventData(prev => ({ ...prev, registration_status: newStatus }));
-                        try {
-                          localStorage.setItem('app_registration_status', newStatus);
-                          broadcastEventUpdate({
-                            ...eventData,
-                            registration_status: newStatus
-                          });
-                        } catch {}
-                      }}
+                      onChange={(e) => handleQuickStatusChange(e.target.value)}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="open">🟢 Dibuka Resmi (Open)</option>
                       <option value="upcoming">🔵 Segera Dibuka (Upcoming)</option>
                       <option value="closed">🔴 Ditutup (Closed)</option>
                     </select>
-                    <span className="text-[11px] text-slate-400 block">
-                      Tersinkron instan ke landing page. Jangan lupa klik tombol Simpan di bawah.
+                    <span className="text-[11px] text-emerald-400 block font-medium">
+                      ⚡ Otomatis tersimpan ke database & tersinkron real-time ke halaman utama & formulir.
                     </span>
                   </div>
                 </div>
