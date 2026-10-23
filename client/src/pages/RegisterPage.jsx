@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { 
-  User, School, Mail, ArrowLeft, Send, AlertCircle, 
-  CheckCircle2, Sparkles, Shield, Lock, Calendar, Clock, MapPin, Ticket 
+  User, School, Mail, ArrowLeft, Send, AlertCircle, Sparkles, Lock 
 } from 'lucide-react';
 import { registerParticipant, getEventInfo, getCachedEventInfo } from '../utils/api';
-import { formatIndonesianDate, getRegistrationStatus } from '../utils/dateFormatter';
+import { getRegistrationStatus } from '../utils/dateFormatter';
 import { downloadTicketPdf } from '../utils/pdfGenerator';
 import TicketCard from '../components/TicketCard';
 
@@ -153,41 +152,6 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          {/* Event Details Mini Summary Card (Auto-synchronized with Admin) */}
-          <div className="mb-6 p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col sm:flex-row items-center gap-3.5 sm:gap-4">
-            {event?.flyer_url && (
-              <img
-                src={event.flyer_url}
-                alt="Flyer Acara"
-                className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-xl border border-slate-700 shrink-0 shadow-md"
-              />
-            )}
-            <div className="space-y-1.5 flex-1 text-center sm:text-left">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                Pendaftaran Resmi
-              </span>
-              <h2 className="text-sm sm:text-base font-bold text-white leading-snug">
-                {event?.title || 'Natal SMA & SMK Kota Malang 2026'}
-              </h2>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2.5 gap-y-1 text-xs text-slate-300">
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>{formatIndonesianDate(event?.date || '2026-01-28')}</span>
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>{event?.time || '09:00 - 13:00 WIB'}</span>
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate max-w-[200px]">{event?.location || 'Auditorium NICC'}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* If Registration is Closed or Full */}
           {!regStatus.canRegister && (
             <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3 text-xs sm:text-sm text-rose-300">
@@ -305,27 +269,6 @@ export default function RegisterPage() {
               <span className="text-[11px] text-slate-400">
                 E-Tiket PDF resmi dan QR Code presensi akan dikirimkan juga ke email ini.
               </span>
-            </div>
-
-            {/* Privacy Disclaimer (Poin 25) */}
-            <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/80 text-xs text-slate-300 space-y-1.5">
-              <div className="font-bold text-white flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Pernyataan Privasi Data Peserta:</span>
-              </div>
-              <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-                Data pribadi yang Anda masukkan (Nama, Sekolah, Kelas, dan Email) hanya digunakan oleh Panitia Natal SMA/SMK Kota Malang 2026 untuk keperluan administrasi tiket dan verifikasi presensi kehadiran. Data Anda aman dan tidak akan dibagikan kepada pihak ketiga manapun.
-              </p>
-            </div>
-
-            {/* Terms notice */}
-            <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
-              <div className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Ketentuan Registrasi:</span>
-              </div>
-              <div>• 1 Email dan Nama hanya berlaku untuk 1 kali pendaftaran (1 tiket peserta).</div>
-              <div>• File PDF E-Tiket akan otomatis terdownload di browser Anda sesaat setelah menekan tombol daftar.</div>
             </div>
 
             {/* Submit Button */}
