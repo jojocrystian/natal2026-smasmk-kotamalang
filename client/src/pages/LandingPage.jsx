@@ -59,6 +59,44 @@ export default function LandingPage() {
     }
   ];
 
+  // Reusable Flyer Card Component
+  const renderFlyerCard = () => (
+    <div className="w-full max-w-[280px] xs:max-w-xs sm:max-w-sm lg:max-w-md bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-800 p-2.5 sm:p-4 shadow-2xl flex flex-col gap-2.5 mx-auto">
+      {/* Poster Image Frame */}
+      <div className="rounded-xl sm:rounded-2xl overflow-hidden bg-slate-950 aspect-[3/4] max-h-[380px] sm:max-h-none flex items-center justify-center relative border border-slate-800">
+        {event?.flyer_url ? (
+          <img
+            src={event.flyer_url}
+            alt="Poster Resmi Natal Bersama SMA dan SMK Kota Malang 2026"
+            className="w-full h-full object-contain sm:object-cover transition-transform duration-500 hover:scale-105"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center text-center p-6 space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <Ticket className="w-7 h-7" />
+            </div>
+            <div>
+              <h4 className="font-bold text-white text-sm sm:text-base">Poster Resmi Acara</h4>
+              <p className="text-xs text-slate-400 mt-1">
+                Natal Bersama SMA & SMK Kota Malang 2026
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Clean Bottom Label OUTSIDE image */}
+      <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg sm:rounded-xl px-3 py-1.5 sm:py-2 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className="font-semibold text-slate-300 text-[11px] sm:text-xs">Poster Resmi Acara</span>
+        </div>
+        <span className="text-slate-400 font-mono text-[10px] sm:text-[11px]">Natal 2026</span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
       
@@ -117,7 +155,12 @@ export default function LandingPage() {
                   {event?.description || 'Ibadah dan Perayaan Natal bersama seluruh pelajar SMA dan SMK se-Kota Malang 2026. Daftarkan diri Anda secara online untuk mendapatkan E-Tiket resmi dengan QR Code presensi instan.'}
                 </p>
 
-                {/* Event Metadata Cards - Mobile 2-Columns to save height */}
+                {/* MOBILE FLYER: Placed right after Event Title & Description on Mobile devices */}
+                <div className="block lg:hidden py-1">
+                  {renderFlyerCard()}
+                </div>
+
+                {/* Event Metadata Cards (Informasi) */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5 pt-0.5">
                   
                   {/* Card Tanggal */}
@@ -221,44 +264,9 @@ export default function LandingPage() {
 
               </div>
 
-              {/* Right Column: Event Poster Display - Balanced Size on Mobile */}
-              <div className="lg:col-span-5 flex justify-center pt-2 lg:pt-0">
-                <div className="w-full max-w-[280px] xs:max-w-xs sm:max-w-md bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-800 p-2.5 sm:p-4 shadow-2xl flex flex-col gap-2.5">
-                  
-                  {/* Poster Image Frame */}
-                  <div className="rounded-xl sm:rounded-2xl overflow-hidden bg-slate-950 aspect-[3/4] max-h-[380px] sm:max-h-none flex items-center justify-center relative border border-slate-800">
-                    {event?.flyer_url ? (
-                      <img
-                        src={event.flyer_url}
-                        alt="Poster Resmi Natal Bersama SMA dan SMK Kota Malang 2026"
-                        className="w-full h-full object-contain sm:object-cover transition-transform duration-500 hover:scale-105"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-center p-6 space-y-3">
-                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                          <Ticket className="w-7 h-7" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-white text-sm sm:text-base">Poster Resmi Acara</h4>
-                          <p className="text-xs text-slate-400 mt-1">
-                            Natal Bersama SMA & SMK Kota Malang 2026
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Clean Bottom Label OUTSIDE image */}
-                  <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg sm:rounded-xl px-3 py-1.5 sm:py-2 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span className="font-semibold text-slate-300 text-[11px] sm:text-xs">Poster Resmi Acara</span>
-                    </div>
-                    <span className="text-slate-400 font-mono text-[10px] sm:text-[11px]">Natal 2026</span>
-                  </div>
-
-                </div>
+              {/* Right Column: Event Poster Display (Desktop only) */}
+              <div className="hidden lg:flex lg:col-span-5 justify-center pt-2 lg:pt-0">
+                {renderFlyerCard()}
               </div>
 
             </div>
