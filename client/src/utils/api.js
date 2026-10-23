@@ -255,6 +255,16 @@ export function parseEventMeta(event) {
     quota = Number(localQuota);
   }
 
+  const localRegisteredCount = localStorage.getItem('app_registered_count');
+  if (event.registered_count !== undefined && event.registered_count !== null && !isNaN(Number(event.registered_count))) {
+    try { localStorage.setItem('app_registered_count', String(event.registered_count)); } catch {}
+    event.registered_count = Number(event.registered_count);
+  } else if (localRegisteredCount) {
+    event.registered_count = Number(localRegisteredCount);
+  } else {
+    event.registered_count = 0;
+  }
+
   event.registration_status = regStatus || 'open';
   event.quota = quota !== undefined && quota !== null ? Number(quota) : 500;
   return event;
@@ -270,6 +280,9 @@ export function broadcastEventUpdate(eventObj) {
       }
       if (parsed.quota !== undefined && parsed.quota !== null) {
         localStorage.setItem('app_quota', String(parsed.quota));
+      }
+      if (parsed.registered_count !== undefined && parsed.registered_count !== null) {
+        localStorage.setItem('app_registered_count', String(parsed.registered_count));
       }
       localStorage.setItem('cached_event_info', JSON.stringify(parsed));
       localStorage.setItem('event_info_last_updated', Date.now().toString());
@@ -295,6 +308,16 @@ export async function getEventInfo() {
   let data;
   if (isSheetsMode()) {
     data = await callSheets('getEvent');
+    // Ensure real live participant count from sheet "Peserta" if getEvent didn't include it or returned 0
+    if (!data?.event?.registered_count) {
+      try {
+        const statsRes = await callSheets('getStats');
+        if (statsRes?.stats?.total !== undefined) {
+          if (!data.event) data.event = {};
+          data.event.registered_count = Number(statsRes.stats.total);
+        }
+      } catch (se) {}
+    }
   } else {
     data = await apiFetch('/event');
   }
@@ -394,6 +417,22 @@ export async function registerParticipant(payload) {
   }
   if (result.participant) {
     result.participant = await attachQrCode(result.participant);
+
+    // Immediately update and broadcast new participant count!
+    const currentEvent = getCachedEventInfo() || {};
+    const updatedCount = Number(
+      result.registered_count !== undefined 
+        ? result.registered_count 
+        : (result.event?.registered_count !== undefined 
+            ? result.event.registered_count 
+            : (Number(currentEvent.registered_count || 0) + 1))
+    );
+    const updatedEvent = {
+      ...currentEvent,
+      ...(result.event || {}),
+      registered_count: updatedCount
+    };
+    broadcastEventUpdate(updatedEvent);
   }
   return result;
 }
@@ -457,6 +496,22 @@ export async function addManualParticipant(payload) {
   }
   if (result.participant) {
     result.participant = await attachQrCode(result.participant);
+
+    // Immediately update and broadcast new participant count!
+    const currentEvent = getCachedEventInfo() || {};
+    const updatedCount = Number(
+      result.registered_count !== undefined 
+        ? result.registered_count 
+        : (result.event?.registered_count !== undefined 
+            ? result.event.registered_count 
+            : (Number(currentEvent.registered_count || 0) + 1))
+    );
+    const updatedEvent = {
+      ...currentEvent,
+      ...(result.event || {}),
+      registered_count: updatedCount
+    };
+    broadcastEventUpdate(updatedEvent);
   }
   return result;
 }
@@ -515,12 +570,25 @@ export async function updateParticipant(id, payload) {
 }
 
 export async function deleteParticipant(id) {
+  let res;
   if (isSheetsMode()) {
-    return await callSheets('deleteParticipant', { id });
+    res = await callSheets('deleteParticipant', { id });
+  } else {
+    res = await apiFetch(`/participants/${id}`, {
+      method: 'DELETE'
+    });
   }
-  return await apiFetch(`/participants/${id}`, {
-    method: 'DELETE'
+  const currentEvent = getCachedEventInfo() || {};
+  const updatedCount = Number(
+    res?.registered_count !== undefined 
+      ? res.registered_count 
+      : Math.max(0, Number(currentEvent.registered_count || 1) - 1)
+  );
+  broadcastEventUpdate({
+    ...currentEvent,
+    registered_count: updatedCount
   });
+  return res;
 }
 
 export async function toggleAttendance(id, attended) {

@@ -118,6 +118,8 @@ router.post('/register', async (req, res) => {
 
     const newParticipant = db.prepare('SELECT * FROM participants WHERE id = ?').get(result.lastInsertRowid);
     const eventInfo = db.prepare('SELECT * FROM events ORDER BY id ASC LIMIT 1').get() || {};
+    const countRow = db.prepare('SELECT COUNT(*) as count FROM participants').get();
+    const registeredCount = countRow ? countRow.count : 0;
 
     // Asynchronously dispatch Google Sheets auto-backup
     syncToSheets({
@@ -132,7 +134,11 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       message: 'Pendaftaran berhasil!',
       participant: newParticipant,
-      event: eventInfo
+      registered_count: registeredCount,
+      event: {
+        ...eventInfo,
+        registered_count: registeredCount
+      }
     });
   } catch (error) {
     console.error('Registration Error:', error);
@@ -238,9 +244,13 @@ router.post('/manual', authenticateToken, async (req, res) => {
     // Send ticket email
     sendTicketEmail(newParticipant, eventInfo).catch(err => console.error('[Auto Email Error]:', err));
 
+    const countRow = db.prepare('SELECT COUNT(*) as count FROM participants').get();
+    const registeredCount = countRow ? countRow.count : 0;
+
     res.status(201).json({
       message: 'Peserta berhasil ditambahkan secara manual!',
-      participant: newParticipant
+      participant: newParticipant,
+      registered_count: registeredCount
     });
   } catch (error) {
     console.error('Manual Add Error:', error);
@@ -499,7 +509,13 @@ router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
       code: target.code
     }).catch(err => console.error('[Sync Delete Error]:', err));
 
-    res.json({ message: `Peserta ${target.full_name} (${target.code}) berhasil dihapus.` });
+    const countRow = db.prepare('SELECT COUNT(*) as count FROM participants').get();
+    const registeredCount = countRow ? countRow.count : 0;
+
+    res.json({ 
+      message: `Peserta ${target.full_name} (${target.code}) berhasil dihapus.`,
+      registered_count: registeredCount
+    });
   } catch (error) {
     console.error('Delete error:', error);
     res.status(500).json({ error: 'Gagal menghapus data peserta.' });

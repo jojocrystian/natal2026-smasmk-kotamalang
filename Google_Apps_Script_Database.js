@@ -218,7 +218,17 @@ function doPost(e) {
         created_at: createdAt
       };
 
-      return jsonResponse({ message: "Registrasi berhasil!", participant: participant });
+      var allP = sheet.getDataRange().getValues();
+      var count = 0;
+      for (var pi = 1; pi < allP.length; pi++) {
+        if (allP[pi][0]) count++;
+      }
+
+      return jsonResponse({
+        message: "Registrasi berhasil!",
+        participant: participant,
+        registered_count: count
+      });
     }
 
     if (action === "scan") {
