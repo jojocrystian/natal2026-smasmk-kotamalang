@@ -56,7 +56,51 @@ function doPost(e) {
       for (var i = 1; i < values.length; i++) {
         event[values[i][0]] = values[i][1];
       }
+      var sheetP = ss.getSheetByName("Peserta");
+      var count = Math.max(0, sheetP.getLastRow() - 1);
+      event.registered_count = count;
+      event.quota = event.quota ? parseInt(event.quota) : 500;
+      event.registration_status = event.registration_status || "open";
       return jsonResponse({ event: event });
+    }
+
+    if (action === "checkTicket") {
+      var query = (data.query || "").toString().trim().toLowerCase();
+      if (!query) {
+        return jsonResponse({ error: "Query pencarian tiket tidak boleh kosong." }, 400);
+      }
+      var sheetP = ss.getSheetByName("Peserta");
+      var valuesP = sheetP.getDataRange().getValues();
+      var found = null;
+      for (var i = valuesP.length - 1; i >= 1; i--) {
+        var r = valuesP[i];
+        var code = (r[0] || "").toString().toLowerCase();
+        var name = (r[1] || "").toString().toLowerCase();
+        var email = (r[5] || "").toString().toLowerCase();
+        if (code === query || name === query || email === query) {
+          found = {
+            id: i,
+            code: String(r[0]),
+            full_name: String(r[1]),
+            nickname: String(r[2]),
+            school: String(r[3]),
+            grade: String(r[4]),
+            email: String(r[5]),
+            attended: r[6] === "Hadir" ? 1 : 0
+          };
+          break;
+        }
+      }
+      if (!found) {
+        return jsonResponse({ error: "Tiket tidak ditemukan. Periksa kembali email atau kode tiket Anda." }, 404);
+      }
+      var sAcara = ss.getSheetByName("Acara");
+      var vAcara = sAcara.getDataRange().getValues();
+      var ev = {};
+      for (var j = 1; j < vAcara.length; j++) {
+        ev[vAcara[j][0]] = vAcara[j][1];
+      }
+      return jsonResponse({ success: true, participant: found, event: ev });
     }
 
     if (action === "updateEvent") {

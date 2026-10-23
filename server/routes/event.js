@@ -39,8 +39,17 @@ const upload = multer({
 
 // GET current event information (Public)
 router.get('/', (req, res) => {
-  const event = db.prepare('SELECT * FROM events ORDER BY id ASC LIMIT 1').get();
-  res.json({ event: event || {} });
+  const event = db.prepare('SELECT * FROM events ORDER BY id ASC LIMIT 1').get() || {};
+  const countRow = db.prepare('SELECT COUNT(*) as count FROM participants').get();
+  const registeredCount = countRow ? countRow.count : 0;
+  res.json({
+    event: {
+      ...event,
+      registered_count: registeredCount,
+      quota: event.quota || 500,
+      registration_status: event.registration_status || 'open'
+    }
+  });
 });
 
 // PUT update event information (Admin only)

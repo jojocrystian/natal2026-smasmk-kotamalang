@@ -72,11 +72,11 @@ if (eventCount === 0) {
     INSERT INTO events (title, date, time, location, description, flyer_url)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(
-    'Grand Seminar & Expo 2026',
-    '2026-10-25',
-    '08:00 - 13:00 WIB',
-    'Auditorium Utama & Convention Hall',
-    'Acara akbar edukasi dan teknologi tahunan yang mempertemukan pelajar, alumni, dan pembicara inspiratif.',
+    'Natal SMA & SMK Kota Malang 2026',
+    '2026-01-28',
+    '09:00 - 13:00 WIB',
+    'Auditorium NICC, Jl. Kolonel Sugiono No. 24, Sukun, Kota Malang',
+    'Ibadah dan Perayaan Natal bersama seluruh pelajar SMA dan SMK se-Kota Malang 2026. Daftarkan diri Anda secara online untuk mendapatkan E-Tiket resmi dengan QR Code presensi instan.',
     ''
   );
 }

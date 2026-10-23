@@ -124,6 +124,40 @@ router.post('/register', async (req, res) => {
 });
 
 /**
+ * Public Check / Lookup Ticket (By email, code, or full_name)
+ * Returns only the matching participant's own ticket
+ */
+router.post('/check-ticket', async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query || !query.trim()) {
+      return res.status(400).json({ error: 'Masukkan email, kode tiket, atau nama lengkap untuk mencari tiket.' });
+    }
+
+    const q = query.trim().toLowerCase();
+    const participant = db.prepare(`
+      SELECT code, full_name, nickname, school, grade, email, qr_image, attended, attended_at
+      FROM participants
+      WHERE LOWER(email) = ? OR LOWER(code) = ? OR LOWER(full_name) = ?
+      ORDER BY id DESC LIMIT 1
+    `).get(q, q, q);
+
+    if (!participant) {
+      return res.status(404).json({ error: 'Tiket tidak ditemukan. Pastikan data yang dimasukkan sama persis saat mendaftar.' });
+    }
+
+    const eventInfo = db.prepare('SELECT * FROM events ORDER BY id ASC LIMIT 1').get() || {};
+    res.json({
+      success: true,
+      participant,
+      event: eventInfo
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Terjadi kesalahan sistem saat mencari tiket: ' + error.message });
+  }
+});
+
+/**
  * Manual Add Attendee by Panitia / Admin
  */
 router.post('/manual', authenticateToken, async (req, res) => {

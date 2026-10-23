@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import confetti from 'canvas-confetti';
-import { User, School, Mail, ArrowLeft, Send, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
+import { User, School, Mail, ArrowLeft, Send, AlertCircle, CheckCircle2, Sparkles, Shield, Lock } from 'lucide-react';
 import { registerParticipant, getEventInfo } from '../utils/api';
+import { getRegistrationStatus } from '../utils/dateFormatter';
 import { downloadTicketPdf } from '../utils/pdfGenerator';
 import TicketCard from '../components/TicketCard';
 
@@ -24,8 +25,15 @@ export default function RegisterPage() {
     getEventInfo().then(data => setEvent(data.event)).catch(() => {});
   }, []);
 
+  const regStatus = getRegistrationStatus(event);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!regStatus.canRegister) {
+      setError('Maaf, pendaftaran saat ini sedang ditutup atau kuota telah penuh.');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -69,7 +77,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 py-10 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center">
+    <div className="min-h-screen bg-slate-950 py-8 sm:py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center selection:bg-emerald-500 selection:text-white">
       
       {/* Modal E-Tiket Preview */}
       <TicketCard
@@ -84,7 +92,7 @@ export default function RegisterPage() {
         {/* Back Link to Landing Page */}
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-xs sm:text-sm font-medium mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-xs sm:text-sm font-semibold mb-6 transition-colors focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none rounded-lg p-1"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Kembali ke Informasi Acara</span>
@@ -92,25 +100,35 @@ export default function RegisterPage() {
 
         {/* Card Form */}
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Form Header */}
-          <div className="mb-6 space-y-1 text-center sm:text-left">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-2">
+          <div className="mb-6 space-y-1.5 text-center sm:text-left">
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-1 border ${regStatus.badgeColor}`}>
               <Sparkles className="w-3.5 h-3.5" />
-              Pendaftaran Peserta Acara
+              <span>{regStatus.badgeText}</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Formulir Registrasi
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400">
-              Isi data diri Anda dengan benar. Tiket PDF & QR Code akan otomatis tergenerate dan terdownload.
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Formulir Pendaftaran
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300">
+              Isi data diri Anda dengan benar. Tiket resmi berformat PDF & QR Code akan otomatis tergenerate.
             </p>
           </div>
 
+          {/* If Registration is Closed or Full */}
+          {!regStatus.canRegister && (
+            <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3 text-xs sm:text-sm text-rose-300">
+              <Lock className="w-5 h-5 shrink-0 mt-0.5" />
+              <div>
+                <strong>Pendaftaran Tidak Tersedia:</strong> Saat ini pendaftaran telah ditutup atau kuota peserta (500/500) telah terpenuhi. Silakan hubungi panitia jika Anda membutuhkan bantuan lebih lanjut.
+              </div>
+            </div>
+          )}
+
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-start gap-3 text-xs sm:text-sm text-red-400 animate-shake">
+            <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3 text-xs sm:text-sm text-rose-400 animate-shake">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -121,107 +139,134 @@ export default function RegisterPage() {
             
             {/* Nama Lengkap */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <label htmlFor="reg-fullname" className="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-emerald-400" />
                 Nama Lengkap *
               </label>
               <input
+                id="reg-fullname"
                 type="text"
                 required
-                placeholder="Masukkan nama lengkap sesuai identitas"
+                disabled={!regStatus.canRegister}
+                placeholder="Masukkan nama lengkap sesuai kartu pelajar"
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="w-full min-h-[44px] bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
               />
             </div>
 
             {/* Nama Panggilan & Kelas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">
+                <label htmlFor="reg-nickname" className="text-xs sm:text-sm font-semibold text-slate-200">
                   Nama Panggilan *
                 </label>
                 <input
+                  id="reg-nickname"
                   type="text"
                   required
+                  disabled={!regStatus.canRegister}
                   placeholder="Contoh: Budi"
                   value={formData.nickname}
                   onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                  className="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  className="w-full min-h-[44px] bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
                 />
-                <span className="text-[11px] text-slate-500">ID Tiket: [No_NamaPanggilan]</span>
+                <span className="text-[11px] text-slate-400">Digunakan untuk kode tiket: [No_NamaPanggilan]</span>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">
-                  Kelas *
+                <label htmlFor="reg-grade" className="text-xs sm:text-sm font-semibold text-slate-200">
+                  Tingkat Kelas *
                 </label>
                 <select
+                  id="reg-grade"
+                  disabled={!regStatus.canRegister}
                   value={formData.grade}
                   onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                  className="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  className="w-full min-h-[44px] bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-base sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
                 >
-                  <option value="X">Kelas X</option>
-                  <option value="XI">Kelas XI</option>
-                  <option value="XII">Kelas XII</option>
-                  <option value="Alumni">Alumni</option>
+                  <option value="X">Kelas X (Sepuluh)</option>
+                  <option value="XI">Kelas XI (Sebelas)</option>
+                  <option value="XII">Kelas XII (Dua Belas)</option>
+                  <option value="Alumni">Alumni / Guru Pendamping</option>
                 </select>
               </div>
             </div>
 
             {/* Asal Sekolah */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <label htmlFor="reg-school" className="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-1.5">
                 <School className="w-3.5 h-3.5 text-emerald-400" />
-                Asal Sekolah *
+                Asal Sekolah SMA / SMK *
               </label>
               <input
+                id="reg-school"
                 type="text"
                 required
-                placeholder="Contoh: SMA Negeri 1 Jakarta / SMK 2 Surabaya"
+                disabled={!regStatus.canRegister}
+                placeholder="Contoh: SMAN 1 Malang / SMKN 4 Malang"
                 value={formData.school}
                 onChange={(e) => setFormData({ ...formData, school: e.target.value })}
-                className="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="w-full min-h-[44px] bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
               />
             </div>
 
             {/* Email */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <label htmlFor="reg-email" className="text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-emerald-400" />
                 Email Aktif *
               </label>
               <input
+                id="reg-email"
                 type="email"
                 required
+                disabled={!regStatus.canRegister}
                 placeholder="email.aktif@gmail.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="w-full min-h-[44px] bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-base sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
               />
-              <span className="text-[11px] text-slate-500">
-                PDF Tiket & QR Code presensi akan dikirimkan ke email ini.
+              <span className="text-[11px] text-slate-400">
+                E-Tiket PDF resmi dan QR Code presensi akan dikirimkan juga ke email ini.
               </span>
             </div>
 
+            {/* Privacy Disclaimer (Poin 25) */}
+            <div className="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/80 text-xs text-slate-300 space-y-1.5">
+              <div className="font-bold text-white flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Pernyataan Privasi Data Peserta:</span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                Data pribadi yang Anda masukkan (Nama, Sekolah, Kelas, dan Email) hanya digunakan oleh Panitia Natal SMA/SMK Kota Malang 2026 untuk keperluan administrasi tiket dan verifikasi presensi kehadiran. Data Anda aman dan tidak akan dibagikan kepada pihak ketiga manapun.
+              </p>
+            </div>
+
             {/* Terms notice */}
-            <div className="bg-slate-800/40 p-3.5 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
+            <div className="bg-slate-800/30 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
               <div className="font-semibold text-slate-300 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                Ketentuan Pendaftaran:
+                <span>Ketentuan Registrasi:</span>
               </div>
-              <div>• 1 Email dan Nama hanya berlaku untuk 1 kali pendaftaran dan 1 kali scan presensi.</div>
-              <div>• PDF Tiket akan otomatis terdownload pada website setelah menekan tombol daftar.</div>
+              <div>• 1 Email dan Nama hanya berlaku untuk 1 kali pendaftaran (1 tiket peserta).</div>
+              <div>• File PDF E-Tiket akan otomatis terdownload di browser Anda sesaat setelah menekan tombol daftar.</div>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm sm:text-base shadow-xl shadow-emerald-900/40 hover:shadow-emerald-900/60 transition-all hover:scale-[1.01] disabled:opacity-50 flex items-center justify-center gap-2"
+              disabled={loading || !regStatus.canRegister}
+              className="w-full min-h-[48px] py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm sm:text-base shadow-xl shadow-emerald-900/40 hover:shadow-emerald-900/60 transition-all hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
             >
               <Send className="w-4 h-4" />
-              <span>{loading ? 'Memproses Pendaftaran & Tiket...' : 'Daftar & Unduh Tiket QR'}</span>
+              <span>
+                {loading 
+                  ? 'Memproses Pendaftaran & Tiket...' 
+                  : !regStatus.canRegister 
+                    ? 'Pendaftaran Ditutup' 
+                    : 'Daftar & Unduh Tiket QR'}
+              </span>
             </button>
 
           </form>

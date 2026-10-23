@@ -253,6 +253,22 @@ export async function registerParticipant(payload) {
   return result;
 }
 
+export async function checkTicket(query) {
+  let result;
+  if (isSheetsMode()) {
+    result = await callSheets('checkTicket', { query });
+  } else {
+    result = await apiFetch('/participants/check-ticket', {
+      method: 'POST',
+      body: JSON.stringify({ query })
+    });
+  }
+  if (result.participant) {
+    result.participant = await attachQrCode(result.participant);
+  }
+  return result;
+}
+
 export async function addManualParticipant(payload) {
   let result;
   if (isSheetsMode()) {
