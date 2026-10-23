@@ -5,32 +5,67 @@ import {
   CheckCircle2, AlertCircle, RefreshCw, MessageCircle, 
   HelpCircle, Sparkles, Ticket, ShieldCheck, ChevronDown, UserCheck
 } from 'lucide-react';
-import { getEventInfo } from '../utils/api';
+import { getEventInfo, getCachedEventInfo } from '../utils/api';
 import { formatIndonesianDate, getRegistrationStatus } from '../utils/dateFormatter';
 import CheckTicketModal from '../components/CheckTicketModal';
 
 export default function LandingPage() {
-  const [event, setEvent] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [event, setEvent] = useState(() => getCachedEventInfo());
+  const [loading, setLoading] = useState(() => !getCachedEventInfo());
   const [error, setError] = useState(null);
   const [showCheckTicket, setShowCheckTicket] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState(null);
 
   useEffect(() => {
-    loadEvent();
+    loadEvent(!event);
+
+    // Realtime Sync Listener (Same window / tab)
+    const handleEventUpdate = (e) => {
+      if (e.detail) {
+        setEvent(e.detail);
+        setLoading(false);
+      }
+    };
+    window.addEventListener('event_info_updated', handleEventUpdate);
+
+    // Cross-tab Storage Sync Listener
+    const handleStorageUpdate = (e) => {
+      if (e.key === 'cached_event_info' && e.newValue) {
+        try {
+          setEvent(JSON.parse(e.newValue));
+          setLoading(false);
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+
+    // Polling every 8 seconds to automatically catch changes from Admin or Google Sheets
+    const interval = setInterval(() => {
+      loadEvent(false);
+    }, 8000);
+
+    return () => {
+      window.removeEventListener('event_info_updated', handleEventUpdate);
+      window.removeEventListener('storage', handleStorageUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
-  const loadEvent = async () => {
-    setLoading(true);
+  const loadEvent = async (showLoadingState = true) => {
+    if (showLoadingState) setLoading(true);
     setError(null);
     try {
       const data = await getEventInfo();
-      setEvent(data.event);
+      if (data?.event) {
+        setEvent(data.event);
+      }
     } catch (err) {
       console.warn('Gagal memuat data acara:', err);
-      setError('Gagal memuat data acara. Periksa koneksi internet Anda.');
+      if (!event) {
+        setError('Gagal memuat data acara. Periksa koneksi internet Anda.');
+      }
     } finally {
-      setLoading(false);
+      if (showLoadingState) setLoading(false);
     }
   };
 
@@ -38,7 +73,15 @@ export default function LandingPage() {
   const eventDateFormatted = formatIndonesianDate(event?.date || '2026-01-28');
   const eventTime = event?.time || '09:00 - 13:00 WIB';
   const eventLocation = event?.location || 'Auditorium NICC, Jl. Kolonel Sugiono No. 24, Sukun, Kota Malang';
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventLocation)}`;
+  const mapsUrl = event?.maps_url && event.maps_url.trim().startsWith('http')
+    ? event.maps_url.trim()
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventLocation)}`;
+
+  // WhatsApp Link
+  const rawWa = (event?.whatsapp || '081234567890').replace(/[^0-9]/g, '');
+  const waNumber = rawWa.startsWith('0') ? '62' + rawWa.slice(1) : (rawWa.startsWith('62') ? rawWa : '62' + rawWa);
+  const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent('Halo Panitia ' + (event?.title || 'Natal 2026') + ', saya ingin bertanya mengenai pendaftaran')}`;
+
 
   const faqs = [
     {
@@ -363,7 +406,7 @@ export default function LandingPage() {
                   </p>
                 </div>
                 <a
-                  href="https://wa.me/6281234567890?text=Halo%20Panitia%20Natal%20SMA%2FSMK%20Malang%202026%2C%20saya%20ingin%20bertanya%20mengenai%20pendaftaran"
+                  href={waLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 transition-all hover:scale-105 shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none cursor-pointer"

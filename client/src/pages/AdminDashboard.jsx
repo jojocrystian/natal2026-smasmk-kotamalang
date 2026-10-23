@@ -451,7 +451,7 @@ export default function AdminDashboard() {
       };
       const res = await updateEventInfo(payload);
       setEventData(prev => ({ ...prev, ...(res.event || payload) }));
-      showNotification('success', 'Informasi acara berhasil diperbarui!');
+      showNotification('success', 'Informasi acara berhasil diperbarui & otomatis tersinkron ke halaman pendaftaran!');
     } catch (err) {
       showNotification('error', err.message || 'Gagal memperbarui acara.');
     } finally {
@@ -473,7 +473,7 @@ export default function AdminDashboard() {
     try {
       const res = await uploadFlyer(file);
       setEventData(prev => ({ ...prev, flyer_url: res.flyer_url }));
-      showNotification('success', 'Gambar flyer berhasil diperbarui!');
+      showNotification('success', 'Gambar flyer berhasil diperbarui & otomatis tersinkron ke halaman pendaftaran!');
     } catch (err) {
       showNotification('error', err.message || 'Gagal mengunggah flyer.');
     } finally {
@@ -486,11 +486,12 @@ export default function AdminDashboard() {
     try {
       await deleteFlyer();
       setEventData(prev => ({ ...prev, flyer_url: '' }));
-      showNotification('success', 'Gambar flyer berhasil dihapus.');
+      showNotification('success', 'Gambar flyer berhasil dihapus & tersinkron ke halaman pendaftaran.');
     } catch (err) {
       showNotification('error', err.message || 'Gagal menghapus flyer.');
     }
   };
+
 
   // PDF Recap Download with User Feedback
   const handleDownloadRecapPdf = async () => {

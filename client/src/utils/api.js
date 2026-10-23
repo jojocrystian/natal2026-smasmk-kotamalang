@@ -191,22 +191,57 @@ export async function deleteUser(id) {
   });
 }
 
-// Event Information
-export async function getEventInfo() {
-  if (isSheetsMode()) {
-    return await callSheets('getEvent');
+// Event Information & Realtime Cross-Page Synchronization
+export function broadcastEventUpdate(eventObj) {
+  try {
+    if (eventObj) {
+      localStorage.setItem('cached_event_info', JSON.stringify(eventObj));
+      localStorage.setItem('event_info_last_updated', Date.now().toString());
+      window.dispatchEvent(new CustomEvent('event_info_updated', { detail: eventObj }));
+    }
+  } catch (e) {
+    console.warn('Event broadcast error:', e);
   }
-  return await apiFetch('/event');
+}
+
+export function getCachedEventInfo() {
+  try {
+    const raw = localStorage.getItem('cached_event_info');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getEventInfo() {
+  let data;
+  if (isSheetsMode()) {
+    data = await callSheets('getEvent');
+  } else {
+    data = await apiFetch('/event');
+  }
+  if (data?.event) {
+    broadcastEventUpdate(data.event);
+  }
+  return data;
 }
 
 export async function updateEventInfo(payload) {
+  let res;
   if (isSheetsMode()) {
-    return await callSheets('updateEvent', payload);
+    res = await callSheets('updateEvent', payload);
+  } else {
+    res = await apiFetch('/event', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
   }
-  return await apiFetch('/event', {
-    method: 'PUT',
-    body: JSON.stringify(payload)
-  });
+  if (res?.event) {
+    broadcastEventUpdate(res.event);
+  } else {
+    broadcastEventUpdate(payload);
+  }
+  return res;
 }
 
 export async function uploadFlyer(file) {
@@ -217,8 +252,9 @@ export async function uploadFlyer(file) {
       reader.onload = async () => {
         try {
           const base64Url = reader.result;
-          await callSheets('updateEvent', { flyer_url: base64Url });
-          resolve({ flyer_url: base64Url });
+          const res = await callSheets('updateEvent', { flyer_url: base64Url });
+          if (res?.event) broadcastEventUpdate(res.event);
+          resolve({ flyer_url: base64Url, event: res?.event });
         } catch (e) {
           reject(e);
         }
@@ -230,20 +266,35 @@ export async function uploadFlyer(file) {
 
   const formData = new FormData();
   formData.append('flyer', file);
-  return await apiFetch('/event/upload-flyer', {
+  const res = await apiFetch('/event/upload-flyer', {
     method: 'POST',
     body: formData
   });
+
+  // Re-fetch latest event and broadcast
+  const fresh = await getEventInfo().catch(() => null);
+  if (fresh?.event) {
+    broadcastEventUpdate(fresh.event);
+  }
+  return res;
 }
 
 export async function deleteFlyer() {
+  let res;
   if (isSheetsMode()) {
-    return await callSheets('updateEvent', { flyer_url: '' });
+    res = await callSheets('updateEvent', { flyer_url: '' });
+  } else {
+    res = await apiFetch('/event/flyer', {
+      method: 'DELETE'
+    });
   }
-  return await apiFetch('/event/flyer', {
-    method: 'DELETE'
-  });
+  const fresh = await getEventInfo().catch(() => null);
+  if (fresh?.event) {
+    broadcastEventUpdate(fresh.event);
+  }
+  return res;
 }
+
 
 // Participants
 export async function registerParticipant(payload) {

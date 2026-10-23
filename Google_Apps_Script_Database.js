@@ -105,15 +105,25 @@ function doPost(e) {
 
     if (action === "updateEvent") {
       var sheet = ss.getSheetByName("Acara");
+      var values = sheet.getDataRange().getValues();
+      var currentEvent = {};
+      for (var i = 1; i < values.length; i++) {
+        if (values[i][0]) {
+          currentEvent[values[i][0]] = values[i][1];
+        }
+      }
       var keys = ["title", "date", "time", "location", "description", "flyer_url", "quota", "registration_status", "maps_url", "whatsapp"];
       sheet.clearContents();
       sheet.appendRow(["Key", "Value"]);
-      for (var i = 0; i < keys.length; i++) {
-        var k = keys[i];
-        sheet.appendRow([k, data[k] || ""]);
+      for (var j = 0; j < keys.length; j++) {
+        var k = keys[j];
+        var val = (data[k] !== undefined && data[k] !== null) ? data[k] : (currentEvent[k] || "");
+        sheet.appendRow([k, val]);
+        currentEvent[k] = val;
       }
-      return jsonResponse({ message: "Acara berhasil diperbarui", event: data });
+      return jsonResponse({ message: "Acara berhasil diperbarui", event: currentEvent });
     }
+
 
     if (action === "register" || action === "addManual") {
       var sheet = ss.getSheetByName("Peserta");

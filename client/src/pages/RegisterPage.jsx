@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import confetti from 'canvas-confetti';
-import { User, School, Mail, ArrowLeft, Send, AlertCircle, CheckCircle2, Sparkles, Shield, Lock } from 'lucide-react';
-import { registerParticipant, getEventInfo } from '../utils/api';
-import { getRegistrationStatus } from '../utils/dateFormatter';
+import { 
+  User, School, Mail, ArrowLeft, Send, AlertCircle, 
+  CheckCircle2, Sparkles, Shield, Lock, Calendar, Clock, MapPin, Ticket 
+} from 'lucide-react';
+import { registerParticipant, getEventInfo, getCachedEventInfo } from '../utils/api';
+import { formatIndonesianDate, getRegistrationStatus } from '../utils/dateFormatter';
 import { downloadTicketPdf } from '../utils/pdfGenerator';
 import TicketCard from '../components/TicketCard';
 
 export default function RegisterPage() {
-  const [event, setEvent] = useState(null);
+  const [event, setEvent] = useState(() => getCachedEventInfo());
   const [formData, setFormData] = useState({
     full_name: '',
     nickname: '',
@@ -22,7 +25,41 @@ export default function RegisterPage() {
   const [showTicketModal, setShowTicketModal] = useState(false);
 
   useEffect(() => {
-    getEventInfo().then(data => setEvent(data.event)).catch(() => {});
+    // Initial fetch
+    getEventInfo().then(data => {
+      if (data?.event) setEvent(data.event);
+    }).catch(() => {});
+
+    // Realtime Sync Listener (Same window / tab)
+    const handleEventUpdate = (e) => {
+      if (e.detail) {
+        setEvent(e.detail);
+      }
+    };
+    window.addEventListener('event_info_updated', handleEventUpdate);
+
+    // Cross-tab Storage Sync Listener
+    const handleStorageUpdate = (e) => {
+      if (e.key === 'cached_event_info' && e.newValue) {
+        try {
+          setEvent(JSON.parse(e.newValue));
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+
+    // Polling every 8 seconds
+    const interval = setInterval(() => {
+      getEventInfo().then(data => {
+        if (data?.event) setEvent(data.event);
+      }).catch(() => {});
+    }, 8000);
+
+    return () => {
+      window.removeEventListener('event_info_updated', handleEventUpdate);
+      window.removeEventListener('storage', handleStorageUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   const regStatus = getRegistrationStatus(event);
@@ -103,7 +140,7 @@ export default function RegisterPage() {
           <div className="absolute top-0 right-0 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Form Header */}
-          <div className="mb-6 space-y-1.5 text-center sm:text-left">
+          <div className="mb-5 space-y-1.5 text-center sm:text-left">
             <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-1 border ${regStatus.badgeColor}`}>
               <Sparkles className="w-3.5 h-3.5" />
               <span>{regStatus.badgeText}</span>
@@ -116,12 +153,50 @@ export default function RegisterPage() {
             </p>
           </div>
 
+          {/* Event Details Mini Summary Card (Auto-synchronized with Admin) */}
+          <div className="mb-6 p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col sm:flex-row items-center gap-3.5 sm:gap-4">
+            {event?.flyer_url && (
+              <img
+                src={event.flyer_url}
+                alt="Flyer Acara"
+                className="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-xl border border-slate-700 shrink-0 shadow-md"
+              />
+            )}
+            <div className="space-y-1.5 flex-1 text-center sm:text-left">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                Pendaftaran Resmi
+              </span>
+              <h2 className="text-sm sm:text-base font-bold text-white leading-snug">
+                {event?.title || 'Natal SMA & SMK Kota Malang 2026'}
+              </h2>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2.5 gap-y-1 text-xs text-slate-300">
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>{formatIndonesianDate(event?.date || '2026-01-28')}</span>
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>{event?.time || '09:00 - 13:00 WIB'}</span>
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate max-w-[200px]">{event?.location || 'Auditorium NICC'}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* If Registration is Closed or Full */}
           {!regStatus.canRegister && (
             <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-start gap-3 text-xs sm:text-sm text-rose-300">
               <Lock className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
-                <strong>Pendaftaran Tidak Tersedia:</strong> Saat ini pendaftaran telah ditutup atau kuota peserta (500/500) telah terpenuhi. Silakan hubungi panitia jika Anda membutuhkan bantuan lebih lanjut.
+                <strong>Pendaftaran Tidak Tersedia:</strong>{' '}
+                {regStatus.status === 'upcoming'
+                  ? `Pendaftaran untuk acara "${event?.title || 'ini'}" saat ini belum dibuka. Silakan tunggu jadwal pembukaan resmi.`
+                  : `Saat ini pendaftaran untuk "${event?.title || 'ini'}" telah ditutup atau kuota peserta (${event?.registered_count || 0}/${event?.quota || 500}) telah terpenuhi.`}
               </div>
             </div>
           )}
