@@ -65,6 +65,13 @@ db.exec(`
   );
 `);
 
+// Migration for existing tables
+try { db.exec("ALTER TABLE events ADD COLUMN quota INTEGER DEFAULT 500"); } catch (e) {}
+try { db.exec("ALTER TABLE events ADD COLUMN registration_status TEXT DEFAULT 'open'"); } catch (e) {}
+try { db.exec("ALTER TABLE events ADD COLUMN maps_url TEXT"); } catch (e) {}
+try { db.exec("ALTER TABLE events ADD COLUMN whatsapp TEXT"); } catch (e) {}
+
+
 // Seed default event if empty
 const eventCount = db.prepare('SELECT COUNT(*) as count FROM events').get().count;
 if (eventCount === 0) {

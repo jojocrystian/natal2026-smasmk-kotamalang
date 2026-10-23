@@ -236,6 +236,15 @@ export async function uploadFlyer(file) {
   });
 }
 
+export async function deleteFlyer() {
+  if (isSheetsMode()) {
+    return await callSheets('updateEvent', { flyer_url: '' });
+  }
+  return await apiFetch('/event/flyer', {
+    method: 'DELETE'
+  });
+}
+
 // Participants
 export async function registerParticipant(payload) {
   let result;
@@ -375,6 +384,30 @@ export async function deleteParticipant(id) {
   }
   return await apiFetch(`/participants/${id}`, {
     method: 'DELETE'
+  });
+}
+
+export async function toggleAttendance(id, attended) {
+  if (isSheetsMode()) {
+    const user = getCurrentUser();
+    return await callSheets('toggleAttendance', {
+      id,
+      attended: attended ? 1 : 0,
+      scanned_by: user ? user.name : 'Panitia Presensi'
+    });
+  }
+  return await apiFetch(`/participants/${id}/toggle-attendance`, {
+    method: 'POST',
+    body: JSON.stringify({ attended: attended ? 1 : 0 })
+  });
+}
+
+export async function resendTicketEmail(id) {
+  if (isSheetsMode()) {
+    return { success: true, message: 'Fitur email otomatis dijalankan melalui server SMTP.' };
+  }
+  return await apiFetch(`/participants/${id}/resend-email`, {
+    method: 'POST'
   });
 }
 

@@ -490,6 +490,91 @@ router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
 });
 
 /**
+ * Toggle or Cancel Attendance (Admin / Panitia)
+ */
+router.post('/:id/toggle-attendance', authenticateToken, (req, res) => {
+  try {
+    const participantId = parseInt(req.params.id, 10);
+    const target = db.prepare('SELECT * FROM participants WHERE id = ?').get(participantId);
+
+    if (!target) {
+      return res.status(404).json({ error: 'Peserta tidak ditemukan.' });
+    }
+
+    const { attended } = req.body;
+    const shouldAttend = attended !== undefined ? Number(attended) === 1 : target.attended === 0;
+
+    if (shouldAttend) {
+      const verifier = req.user.name || req.user.username;
+      db.prepare(`
+        UPDATE participants
+        SET attended = 1, attended_at = datetime('now', 'localtime'), scanned_by = ?
+        WHERE id = ?
+      `).run(verifier, participantId);
+    } else {
+      db.prepare(`
+        UPDATE participants
+        SET attended = 0, attended_at = NULL, scanned_by = NULL
+        WHERE id = ?
+      `).run(participantId);
+    }
+
+    const updated = db.prepare('SELECT * FROM participants WHERE id = ?').get(participantId);
+
+    // Sync to Sheets
+    syncToSheets({
+      action: shouldAttend ? 'attend' : 'cancel_attend',
+      timestamp: new Date().toISOString(),
+      participant: updated
+    }).catch(err => console.error('[Sync Toggle Attendance Error]:', err));
+
+    res.json({
+      success: true,
+      message: shouldAttend
+        ? `Status hadir berhasil ditandai untuk ${updated.full_name}.`
+        : `Status kehadiran ${updated.full_name} berhasil dibatalkan (Belum Hadir).`,
+      participant: updated
+    });
+  } catch (error) {
+    console.error('Toggle attendance error:', error);
+    res.status(500).json({ error: 'Gagal memperbarui status kehadiran: ' + error.message });
+  }
+});
+
+/**
+ * Resend E-Ticket Email (Admin Only)
+ */
+router.post('/:id/resend-email', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const participantId = parseInt(req.params.id, 10);
+    const target = db.prepare('SELECT * FROM participants WHERE id = ?').get(participantId);
+
+    if (!target) {
+      return res.status(404).json({ error: 'Peserta tidak ditemukan.' });
+    }
+
+    if (!target.email) {
+      return res.status(400).json({ error: 'Peserta tidak memiliki alamat email yang valid.' });
+    }
+
+    const eventInfo = db.prepare('SELECT * FROM events ORDER BY id ASC LIMIT 1').get() || {};
+    const emailResult = await sendTicketEmail(target, eventInfo);
+
+    if (emailResult.disabled) {
+      return res.status(400).json({ error: 'Pengiriman email otomatis sedang dinonaktifkan di Pengaturan SMTP.' });
+    }
+
+    res.json({
+      success: true,
+      message: `Tiket berhasil dikirim ulang ke alamat email ${target.email}.`
+    });
+  } catch (error) {
+    console.error('Resend email error:', error);
+    res.status(500).json({ error: 'Gagal mengirim email tiket: ' + error.message });
+  }
+});
+
+/**
  * Download Ticket PDF Buffer
  */
 router.get('/:id/pdf', async (req, res) => {

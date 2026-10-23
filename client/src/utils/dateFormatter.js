@@ -127,3 +127,29 @@ export function getRegistrationStatus(event) {
     buttonText: 'Daftar Sekarang'
   };
 }
+
+/**
+ * Format timestamp into friendly Indonesian datetime
+ * e.g. "23 Okt 2026, 17.54 WIB"
+ */
+export function formatIndonesianDateTime(dateStr) {
+  if (!dateStr || dateStr === '-' || dateStr === 'null') return '-';
+  try {
+    const trimmed = String(dateStr).trim();
+    const d = new Date(trimmed);
+    if (isNaN(d.getTime())) return trimmed;
+
+    const formatter = new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta'
+    });
+    return formatter.format(d).replace(/\./g, '.') + ' WIB';
+  } catch (err) {
+    return String(dateStr);
+  }
+}
+

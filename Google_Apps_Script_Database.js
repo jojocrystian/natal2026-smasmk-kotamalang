@@ -105,7 +105,7 @@ function doPost(e) {
 
     if (action === "updateEvent") {
       var sheet = ss.getSheetByName("Acara");
-      var keys = ["title", "date", "time", "location", "description", "flyer_url"];
+      var keys = ["title", "date", "time", "location", "description", "flyer_url", "quota", "registration_status", "maps_url", "whatsapp"];
       sheet.clearContents();
       sheet.appendRow(["Key", "Value"]);
       for (var i = 0; i < keys.length; i++) {
@@ -378,6 +378,32 @@ function doPost(e) {
       }
       return jsonResponse({ error: "Peserta tidak ditemukan." });
     }
+
+    if (action === "toggleAttendance") {
+      var sheet = ss.getSheetByName("Peserta");
+      var targetId = data.id;
+      if (targetId >= 1) {
+        var row = targetId + 1;
+        var shouldAttend = data.attended === 1;
+        if (shouldAttend) {
+          var nowStr = Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss");
+          var verifier = data.scanned_by || "Admin";
+          sheet.getRange(row, 7).setValue("Hadir");
+          sheet.getRange(row, 8).setValue(nowStr);
+          sheet.getRange(row, 9).setValue(verifier);
+        } else {
+          sheet.getRange(row, 7).setValue("Belum Hadir");
+          sheet.getRange(row, 8).setValue("-");
+          sheet.getRange(row, 9).setValue("-");
+        }
+        return jsonResponse({
+          success: true,
+          message: shouldAttend ? "Status presensi berhasil ditandai hadir." : "Status kehadiran berhasil dibatalkan."
+        });
+      }
+      return jsonResponse({ error: "Peserta tidak ditemukan." });
+    }
+
 
     if (action === "getUsers") {
       var sheet = ss.getSheetByName("Users");

@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
 
 /**
@@ -287,7 +287,7 @@ export function downloadSchoolRecapPdf(stats, event = {}) {
     `${s.attendanceRate}%`
   ]);
 
-  doc.autoTable({
+  const autoTableConfig = {
     startY: cardY + cardH + 8,
     margin: { left: 14, right: 14 },
     head: [['No', 'Asal Sekolah', 'Total Peserta', 'Hadir', 'Belum Hadir', 'Tingkat Kehadiran']],
@@ -316,10 +316,16 @@ export function downloadSchoolRecapPdf(stats, event = {}) {
     alternateRowStyles: {
       fillColor: [248, 250, 252]
     }
-  });
+  };
+
+  if (typeof autoTable === 'function') {
+    autoTable(doc, autoTableConfig);
+  } else if (typeof doc.autoTable === 'function') {
+    doc.autoTable(autoTableConfig);
+  }
 
   // Signature Block at Bottom
-  const finalY = doc.lastAutoTable.finalY + 16;
+  const finalY = (doc.lastAutoTable?.finalY || (cardY + cardH + 40)) + 16;
   if (finalY < height - 40) {
     const signX = width - 65;
     doc.setFontSize(8.5);
@@ -339,4 +345,5 @@ export function downloadSchoolRecapPdf(stats, event = {}) {
 
   const dateStr = new Date().toISOString().split('T')[0];
   doc.save(`Rekapan_Presensi_Sekolah_${dateStr}.pdf`);
+  return true;
 }

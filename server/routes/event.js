@@ -46,37 +46,77 @@ router.get('/', (req, res) => {
     event: {
       ...event,
       registered_count: registeredCount,
-      quota: event.quota || 500,
-      registration_status: event.registration_status || 'open'
+      quota: event.quota !== undefined && event.quota !== null ? Number(event.quota) : 500,
+      registration_status: event.registration_status || 'open',
+      maps_url: event.maps_url || '',
+      whatsapp: event.whatsapp || ''
     }
   });
 });
 
 // PUT update event information (Admin only)
 router.put('/', authenticateToken, requireAdmin, (req, res) => {
-  const { title, date, time, location, description, flyer_url } = req.body;
+  const { title, date, time, location, description, flyer_url, quota, registration_status, maps_url, whatsapp } = req.body;
 
   if (!title || !date || !time || !location) {
     return res.status(400).json({ error: 'Judul acara, tanggal, waktu, dan tempat wajib diisi.' });
   }
 
+  const cleanQuota = quota !== undefined && !isNaN(Number(quota)) ? Number(quota) : 500;
+  const cleanStatus = registration_status || 'open';
+  const cleanMaps = (maps_url || '').trim();
+  const cleanWa = (whatsapp || '').trim();
+
   const existing = db.prepare('SELECT id FROM events ORDER BY id ASC LIMIT 1').get();
   if (existing) {
     db.prepare(`
       UPDATE events
-      SET title = ?, date = ?, time = ?, location = ?, description = ?, flyer_url = ?, updated_at = datetime('now', 'localtime')
+      SET title = ?, date = ?, time = ?, location = ?, description = ?, flyer_url = ?, quota = ?, registration_status = ?, maps_url = ?, whatsapp = ?, updated_at = datetime('now', 'localtime')
       WHERE id = ?
-    `).run(title.trim(), date.trim(), time.trim(), location.trim(), (description || '').trim(), (flyer_url || '').trim(), existing.id);
+    `).run(
+      title.trim(),
+      date.trim(),
+      time.trim(),
+      location.trim(),
+      (description || '').trim(),
+      (flyer_url || '').trim(),
+      cleanQuota,
+      cleanStatus,
+      cleanMaps,
+      cleanWa,
+      existing.id
+    );
   } else {
     db.prepare(`
-      INSERT INTO events (title, date, time, location, description, flyer_url)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(title.trim(), date.trim(), time.trim(), location.trim(), (description || '').trim(), (flyer_url || '').trim());
+      INSERT INTO events (title, date, time, location, description, flyer_url, quota, registration_status, maps_url, whatsapp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      title.trim(),
+      date.trim(),
+      time.trim(),
+      location.trim(),
+      (description || '').trim(),
+      (flyer_url || '').trim(),
+      cleanQuota,
+      cleanStatus,
+      cleanMaps,
+      cleanWa
+    );
   }
 
   const updated = db.prepare('SELECT * FROM events ORDER BY id ASC LIMIT 1').get();
   res.json({ message: 'Informasi acara berhasil diperbarui.', event: updated });
 });
+
+// DELETE remove flyer image (Admin only)
+router.delete('/flyer', authenticateToken, requireAdmin, (req, res) => {
+  const existing = db.prepare('SELECT id FROM events ORDER BY id ASC LIMIT 1').get();
+  if (existing) {
+    db.prepare("UPDATE events SET flyer_url = '', updated_at = datetime('now', 'localtime') WHERE id = ?").run(existing.id);
+  }
+  res.json({ message: 'Flyer berhasil dihapus.', flyer_url: '' });
+});
+
 
 // POST upload flyer image (Admin only)
 router.post('/upload-flyer', authenticateToken, requireAdmin, upload.single('flyer'), (req, res) => {

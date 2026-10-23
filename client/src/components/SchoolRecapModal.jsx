@@ -4,8 +4,21 @@ import { downloadSchoolRecapPdf } from '../utils/pdfGenerator';
 
 export default function SchoolRecapModal({ isOpen, stats, event, onClose }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [downloading, setDownloading] = useState(false);
 
   if (!isOpen || !stats) return null;
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      await downloadSchoolRecapPdf(stats, event);
+    } catch (err) {
+      console.error('PDF error:', err);
+      alert('Gagal membuat file PDF. Silakan coba lagi.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const schoolList = stats.bySchool || [];
   const filteredSchools = schoolList.filter(s =>
@@ -30,11 +43,12 @@ export default function SchoolRecapModal({ isOpen, stats, event, onClose }) {
           
           <div className="flex items-center gap-2 justify-end">
             <button
-              onClick={() => downloadSchoolRecapPdf(stats, event)}
-              className="flex-1 sm:flex-initial px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-900/30 transition-all hover:scale-105"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="flex-1 sm:flex-initial px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-900/30 transition-all hover:scale-105 disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              <span>Download PDF Rekapan</span>
+              <span>{downloading ? 'Memproses PDF...' : 'Download PDF Rekapan'}</span>
             </button>
             <button
               onClick={onClose}
