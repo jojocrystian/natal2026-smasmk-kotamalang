@@ -1,10 +1,11 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import QRCode from 'qrcode';
 
 /**
  * Generate and download participant e-ticket PDF
  */
-export function downloadTicketPdf(participant, event = {}) {
+export async function downloadTicketPdf(participant, event = {}) {
   // A5 portrait: 148 x 210 mm
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -15,106 +16,183 @@ export function downloadTicketPdf(participant, event = {}) {
   const width = doc.internal.pageSize.getWidth();
   const height = doc.internal.pageSize.getHeight();
 
-  // Background
-  doc.setFillColor(248, 250, 252); // slate-50
+  // Solid Deep Black Background
+  doc.setFillColor(0, 0, 0);
   doc.rect(0, 0, width, height, 'F');
 
-  // Header Banner
-  doc.setFillColor(15, 23, 42); // slate-900
-  doc.rect(0, 0, width, 40, 'F');
-
-  // Accent Line
-  doc.setFillColor(22, 163, 74); // emerald-600
-  doc.rect(0, 38, width, 2, 'F');
-
-  // Badge
-  doc.setFillColor(22, 163, 74);
-  doc.roundedRect(12, 8, 36, 6, 3, 3, 'F');
+  // Top Outer Header Text
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('E-TIKET RESMI', 16, 12.2);
-
-  // Event Title
-  doc.setFontSize(13);
-  doc.setTextColor(255, 255, 255);
-  const eventTitle = event.title || 'ACARA PRESENSI 2026';
-  doc.text(eventTitle, 12, 22, { maxWidth: width - 24 });
-
-  // Event Meta
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(148, 163, 184); // slate-400
-  const eventDate = `${event.date || 'Tanggal Acara'} • ${event.time || 'Waktu Acara'}`;
-  doc.text(eventDate, 12, 29);
-
-  doc.setFontSize(8);
-  doc.setTextColor(203, 213, 225); // slate-300
-  doc.text(`Lokasi: ${event.location || 'Tempat Acara'}`, 12, 34, { maxWidth: width - 24 });
-
-  // Main Card
-  const cardY = 46;
-  const cardW = width - 24;
-  const cardH = height - cardY - 14;
-
-  doc.setFillColor(255, 255, 255);
-  doc.roundedRect(12, cardY, cardW, cardH, 4, 4, 'F');
-  doc.setDrawColor(226, 232, 240); // slate-200
-  doc.roundedRect(12, cardY, cardW, cardH, 4, 4, 'S');
-
-  // ID Header Box
-  doc.setFillColor(240, 253, 244); // emerald-50
-  doc.roundedRect(18, cardY + 6, cardW - 12, 16, 3, 3, 'F');
-  doc.setTextColor(21, 128, 61); // emerald-700
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('KODE PRESENSI PESERTA', 22, cardY + 11.5);
-
   doc.setFontSize(14);
-  doc.setTextColor(22, 101, 52); // emerald-800
-  doc.text(participant.code, 22, cardY + 18);
+  doc.text('THIS IS YOUR TICKET', width / 2, 13, { align: 'center' });
 
-  // QR Code
-  let nextY = cardY + 26;
-  if (participant.qr_image) {
-    const qrSize = 48;
-    const qrX = (width - qrSize) / 2;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(160, 160, 160);
+  doc.text('Please show it on your phone when you arrive at the venue', width / 2, 18, { align: 'center' });
 
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(qrX - 3, nextY, qrSize + 6, qrSize + 6, 3, 3, 'F');
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(qrX - 3, nextY, qrSize + 6, qrSize + 6, 3, 3, 'S');
+  // Main White Ticket Card
+  const cardX = 11;
+  const cardY = 23;
+  const cardW = width - 22; // 126 mm
+  const cardH = 163;
 
-    doc.addImage(participant.qr_image, 'PNG', qrX, nextY + 3, qrSize, qrSize);
-    nextY += qrSize + 12;
+  doc.setFillColor(245, 245, 247); // crisp off-white #F5F5F7
+  doc.roundedRect(cardX, cardY, cardW, cardH, 5, 5, 'F');
+
+  // Top Row inside card
+  const brandName = event.brand || 'NATAL 2026';
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.text(brandName, cardX + 8, cardY + 9);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(140, 140, 140);
+  doc.text('CHECKIN CODE', cardX + cardW - 8, cardY + 7, { align: 'right' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(0, 0, 0);
+  doc.text(String(participant.code || '-'), cardX + cardW - 8, cardY + 11.5, { align: 'right' });
+
+  // QR Code Generation / Display
+  let qrImage = participant.qr_image;
+  if (!qrImage && participant.code) {
+    try {
+      qrImage = await QRCode.toDataURL(participant.code, {
+        width: 450,
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' }
+      });
+    } catch (e) {
+      console.warn('QR Code generation fallback error:', e);
+    }
   }
 
-  // Attendee Info Table / Rows
-  const drawRow = (label, val, y) => {
+  const qrSize = 54;
+  const qrX = (width - qrSize) / 2;
+  const qrY = cardY + 16;
+
+  if (qrImage) {
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(qrX - 2, qrY - 2, qrSize + 4, qrSize + 4, 3, 3, 'F');
+    doc.addImage(qrImage, 'PNG', qrX, qrY, qrSize, qrSize);
+  }
+
+  // Centered Event Details below QR
+  const eventNameY = qrY + qrSize + 6;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text('EVENT NAME', width / 2, eventNameY, { align: 'center' });
+
+  const eventTitle = event.title || 'Natal Bersama SMA/SMK Kota Malang 2026';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(0, 0, 0);
+  doc.text(eventTitle, width / 2, eventNameY + 5, { align: 'center', maxWidth: cardW - 16 });
+
+  const dateTimeY = eventNameY + 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text('DATE AND TIME', width / 2, dateTimeY, { align: 'center' });
+
+  const dateStr = `${event.date || '25/12/2026'}${event.time ? ' • ' + event.time : ' • 08:00 WIB'}`;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
+  doc.text(dateStr, width / 2, dateTimeY + 5, { align: 'center' });
+
+  // Notch Divider with Circular Cutouts and Dashed Line
+  const notchY = dateTimeY + 13;
+  const notchRadius = 4;
+  doc.setFillColor(0, 0, 0);
+  doc.circle(cardX, notchY, notchRadius, 'F');
+  doc.circle(cardX + cardW, notchY, notchRadius, 'F');
+
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineDashPattern([1.5, 1.5], 0);
+  doc.line(cardX + notchRadius + 2, notchY, cardX + cardW - notchRadius - 2, notchY);
+  doc.setLineDashPattern([], 0); // reset pattern
+
+  // Bottom 2-Column Info Grid
+  const row1Y = notchY + 8;
+
+  // Left: Customer Name
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text('CUSTOMER NAME', cardX + 8, row1Y);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
+  doc.text((participant.full_name || '-').toUpperCase(), cardX + 8, row1Y + 4.5, { maxWidth: 60 });
+
+  if (participant.nickname) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(100, 116, 139); // slate-500
-    doc.text(label, 20, y);
+    doc.setFontSize(6.5);
+    doc.setTextColor(110, 110, 110);
+    doc.text(`Panggilan: ${participant.nickname}`, cardX + 8, row1Y + 8.5);
+  }
 
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42); // slate-900
-    doc.text(String(val || '-'), 58, y, { maxWidth: cardW - 52 });
+  // Right: Venue
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text('VENUE', cardX + cardW - 8, row1Y, { align: 'right' });
 
-    doc.setDrawColor(241, 245, 249);
-    doc.line(20, y + 2.5, width - 20, y + 2.5);
-  };
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(0, 0, 0);
+  const locationStr = event.location || 'Gedung Pertemuan Malang';
+  doc.text(locationStr, cardX + cardW - 8, row1Y + 4.5, { align: 'right', maxWidth: 52 });
 
-  drawRow('Nama Lengkap', participant.full_name, nextY);
-  drawRow('Nama Panggilan', participant.nickname, nextY + 8);
-  drawRow('Asal Sekolah', participant.school, nextY + 16);
-  drawRow('Kelas', participant.grade, nextY + 24);
-  drawRow('Email', participant.email, nextY + 32);
+  // Row 2: Ticket Type & Ticket Price
+  const row2Y = row1Y + 14;
 
-  // Footer Instructions
+  // Left: Ticket Type
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text('TICKET TYPE', cardX + 8, row2Y);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
+  const ticketTypeStr = participant.grade ? `KELAS ${participant.grade}` : 'PESERTA';
+  doc.text(ticketTypeStr, cardX + 8, row2Y + 4.5);
+
+  if (participant.school) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(80, 80, 80);
+    doc.text(participant.school, cardX + 8, row2Y + 8.5, { maxWidth: 62 });
+  }
+
+  // Right: Ticket Price
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text('TICKET PRICE', cardX + cardW - 8, row2Y, { align: 'right' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(0, 0, 0);
+  doc.text('FREE PASS', cardX + cardW - 8, row2Y + 5.5, { align: 'right' });
+
+  // Outer Footer (under card)
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(148, 163, 184);
-  doc.text('Tunjukkan QR Code ini kepada panitia saat presensi acara. 1 QR Code hanya berlaku untuk 1 kali scan.', width / 2, height - 7, { align: 'center' });
+  doc.setFontSize(6.5);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Valid for single entry only • Present at venue entrance', width / 2, cardY + cardH + 7, { align: 'center' });
+
+  doc.setFontSize(6);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Powered by Panitia Natal Bersama © 2026', width / 2, cardY + cardH + 11, { align: 'center' });
 
   // Save / Trigger Download
   const filename = `Tiket_${participant.code}.pdf`;

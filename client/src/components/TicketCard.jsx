@@ -1,121 +1,205 @@
-import React from 'react';
-import { Download, X, CheckCircle, Calendar, MapPin, Mail, School, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Download, X } from 'lucide-react';
+import QRCode from 'qrcode';
 import { downloadTicketPdf } from '../utils/pdfGenerator';
 
 export default function TicketCard({ isOpen, participant, event, onClose }) {
+  const [qrUrl, setQrUrl] = useState(participant?.qr_image || '');
+
+  useEffect(() => {
+    if (!participant) return;
+    if (participant.qr_image) {
+      setQrUrl(participant.qr_image);
+    } else if (participant.code) {
+      QRCode.toDataURL(participant.code, {
+        width: 450,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      }).then(setQrUrl).catch(() => {});
+    }
+  }, [participant]);
+
   if (!isOpen || !participant) return null;
 
+  const eventTitle = event?.title || 'Natal Bersama SMA/SMK Kota Malang 2026';
+  const eventDate = event?.date || '25/12/2026';
+  const eventTime = event?.time ? ` • ${event.time}` : ' • 08:00 WIB';
+  const eventLocation = event?.location || 'Gedung Pertemuan Malang';
+  const brandName = event?.brand || 'NATAL 2026';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative my-auto max-h-[94vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/95 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-sm sm:max-w-md my-auto py-4 flex flex-col items-center">
         
-        {/* Close Button */}
+        {/* Floating Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors shadow-md"
+          aria-label="Tutup"
+          className="absolute top-0 right-0 sm:-right-2 z-20 w-8 h-8 rounded-full bg-neutral-800/90 hover:bg-neutral-700 text-neutral-300 hover:text-white flex items-center justify-center transition-colors shadow-lg cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
 
-        {/* Scrollable Container */}
-        <div className="overflow-y-auto flex-1">
-          {/* Ticket Header */}
-          <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 p-5 sm:p-6 text-white text-center relative overflow-hidden">
-            <div className="absolute -right-10 -bottom-10 w-36 h-36 bg-white/10 rounded-full blur-xl pointer-events-none" />
-            <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider mb-2">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-200" />
-              E-Tiket Terverifikasi
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight">{event?.title || 'Acara Presensi 2026'}</h2>
-            <div className="flex items-center justify-center gap-2 sm:gap-3 mt-1.5 text-xs text-emerald-100 flex-wrap">
-              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {event?.date}</span>
-              <span>•</span>
-              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {event?.location}</span>
-            </div>
-          </div>
+        {/* Top Outer Header Text */}
+        <div className="text-center mb-4 sm:mb-5 select-none">
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">
+            THIS IS YOUR TICKET
+          </h1>
+          <p className="text-xs sm:text-sm text-neutral-400 mt-1 font-normal">
+            Please show it on your phone when you arrive at the venue
+          </p>
+        </div>
 
-          {/* Ticket Notch Line */}
-          <div className="relative flex items-center justify-between px-3 -my-3 z-10">
-            <div className="w-5 h-5 rounded-full bg-slate-950 border-r border-slate-800" />
-            <div className="flex-1 border-b-2 border-dashed border-slate-700 mx-2" />
-            <div className="w-5 h-5 rounded-full bg-slate-950 border-l border-slate-800" />
-          </div>
-
-          {/* Ticket Body */}
-          <div className="p-4 sm:p-6 bg-slate-900 space-y-4 sm:space-y-5">
-            
-            {/* QR Code Presentation */}
-            <div className="flex flex-col items-center">
-              <div className="p-2.5 sm:p-3 bg-white rounded-2xl shadow-lg border border-slate-200 inline-block">
-                {participant.qr_image ? (
-                  <img
-                    src={participant.qr_image}
-                    alt={`QR Code ${participant.code}`}
-                    className="w-36 h-36 sm:w-44 sm:h-44 object-contain"
-                  />
-                ) : (
-                  <div className="w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center bg-slate-100 text-slate-400 text-xs">
-                    QR Code Memuat...
-                  </div>
-                )}
+        {/* The White Ticket Card */}
+        <div className="bg-[#f5f5f7] text-black rounded-3xl p-5 sm:p-7 shadow-2xl relative w-full overflow-hidden">
+          
+          {/* Card Top Row: Brand & Checkin Code */}
+          <div className="flex items-start justify-between">
+            <span className="font-black text-xs sm:text-sm tracking-widest text-black uppercase">
+              {brandName}
+            </span>
+            <div className="text-right">
+              <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+                CHECKIN CODE
               </div>
-              
-              <div className="mt-2.5 text-center">
-                <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 tracking-wider uppercase">ID Presensi Peserta</span>
-                <div className="text-xl sm:text-2xl font-black text-emerald-400 tracking-wide font-mono">
-                  {participant.code}
+              <div className="font-mono font-black text-xs sm:text-sm tracking-wider text-black mt-0.5">
+                {participant.code}
+              </div>
+            </div>
+          </div>
+
+          {/* Centered Large QR Code */}
+          <div className="py-2.5 sm:py-3.5 flex justify-center items-center">
+            <div className="bg-white p-2 sm:p-2.5 rounded-2xl shadow-sm inline-block">
+              {qrUrl ? (
+                <img
+                  src={qrUrl}
+                  alt={`QR Code ${participant.code}`}
+                  className="w-44 h-44 sm:w-52 sm:h-52 object-contain block mx-auto"
+                />
+              ) : (
+                <div className="w-44 h-44 sm:w-52 sm:h-52 flex items-center justify-center bg-neutral-100 text-neutral-400 text-xs">
+                  Memuat QR Code...
                 </div>
-              </div>
+              )}
             </div>
-
-            {/* Attendee Details */}
-            <div className="bg-slate-800/60 border border-slate-800 rounded-2xl p-3.5 sm:p-4 space-y-2 text-xs sm:text-sm">
-              <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
-                <span className="text-slate-400 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Nama Lengkap</span>
-                <span className="font-semibold text-white text-right max-w-[190px] truncate">{participant.full_name}</span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Panggilan</span>
-                <span className="font-semibold text-white">{participant.nickname}</span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
-                <span className="text-slate-400 flex items-center gap-1.5"><School className="w-3.5 h-3.5" /> Asal Sekolah</span>
-                <span className="font-semibold text-white text-right max-w-[190px] truncate">{participant.school}</span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Kelas</span>
-                <span className="font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded text-xs">
-                  Kelas {participant.grade}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-slate-400 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Email</span>
-                <span className="font-semibold text-slate-300 text-right truncate max-w-[180px]">{participant.email}</span>
-              </div>
-            </div>
-
-            <div className="text-center text-[11px] text-slate-400">
-              Tunjukkan QR Code ini kepada panitia saat presensi acara.
-            </div>
-
-            {/* Download Buttons */}
-            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-              <button
-                onClick={() => downloadTicketPdf(participant, event)}
-                className="w-full sm:flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 transition-all hover:scale-[1.01]"
-              >
-                <Download className="w-4 h-4" />
-                Download PDF Tiket
-              </button>
-              <button
-                onClick={onClose}
-                className="w-full sm:w-auto py-3 px-5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold text-xs sm:text-sm transition-colors text-center"
-              >
-                Tutup
-              </button>
-            </div>
-
           </div>
+
+          {/* Event Details (Centered below QR) */}
+          <div className="text-center mt-1">
+            <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
+              EVENT NAME
+            </div>
+            <div className="text-base sm:text-lg font-black text-black tracking-tight mt-0.5 leading-snug">
+              {eventTitle}
+            </div>
+
+            <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-2.5 sm:mt-3">
+              DATE AND TIME
+            </div>
+            <div className="text-xs sm:text-sm font-bold text-black mt-0.5">
+              {eventDate}{eventTime}
+            </div>
+          </div>
+
+          {/* Ticket Perforation / Notches Divider */}
+          <div className="relative py-4 -mx-5 sm:-mx-7 my-2 flex items-center justify-between pointer-events-none select-none">
+            {/* Left Notch */}
+            <div className="w-6 h-6 rounded-r-full bg-black shadow-inner" />
+            {/* Dashed Line */}
+            <div className="flex-1 border-t-2 border-dashed border-neutral-300 mx-3" />
+            {/* Right Notch */}
+            <div className="w-6 h-6 rounded-l-full bg-black shadow-inner" />
+          </div>
+
+          {/* Bottom 2-Column Info Grid */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-0.5">
+            {/* Left: Customer Name */}
+            <div>
+              <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                CUSTOMER NAME
+              </div>
+              <div className="font-extrabold text-xs sm:text-sm text-black uppercase tracking-tight mt-0.5 leading-tight break-words">
+                {participant.full_name}
+              </div>
+              {participant.nickname && (
+                <div className="text-[10px] sm:text-xs text-neutral-500 font-medium mt-0.5">
+                  Panggilan: {participant.nickname}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Venue */}
+            <div className="text-right">
+              <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                VENUE
+              </div>
+              <div className="font-extrabold text-xs sm:text-sm text-black tracking-tight mt-0.5 leading-tight break-words">
+                {eventLocation}
+              </div>
+            </div>
+
+            {/* Left: Ticket Type */}
+            <div className="mt-1">
+              <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                TICKET TYPE
+              </div>
+              <div className="font-extrabold text-xs sm:text-sm text-black uppercase tracking-tight mt-0.5 leading-tight">
+                {participant.grade ? `KELAS ${participant.grade}` : 'PESERTA'}
+              </div>
+              {participant.school && (
+                <div className="text-[10px] sm:text-xs text-neutral-600 font-semibold truncate max-w-[150px] sm:max-w-[180px] mt-0.5">
+                  {participant.school}
+                </div>
+              )}
+              {participant.email && (
+                <div className="text-[9px] text-neutral-400 truncate max-w-[150px] sm:max-w-[180px]">
+                  {participant.email}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Ticket Price */}
+            <div className="text-right mt-1">
+              <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                TICKET PRICE
+              </div>
+              <div className="font-black text-base sm:text-xl text-black mt-0.5 tracking-tight">
+                FREE PASS
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Outer Footer (Under the Card) */}
+        <div className="text-center mt-4 sm:mt-5 space-y-1 select-none">
+          <p className="text-[11px] sm:text-xs text-neutral-400 tracking-wide">
+            Valid for single entry only • Present at venue entrance
+          </p>
+          <p className="text-[10px] sm:text-[11px] text-neutral-600">
+            Powered by Panitia Natal Bersama &copy; 2026
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-2.5 w-full mt-4 sm:mt-5">
+          <button
+            onClick={() => downloadTicketPdf({ ...participant, qr_image: qrUrl }, event)}
+            className="flex-1 py-3 px-5 bg-white hover:bg-neutral-200 text-black rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF Tiket
+          </button>
+          <button
+            onClick={onClose}
+            className="py-3 px-6 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white rounded-xl font-semibold text-xs sm:text-sm border border-neutral-800 transition-colors cursor-pointer text-center"
+          >
+            Tutup
+          </button>
         </div>
 
       </div>

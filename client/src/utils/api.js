@@ -57,10 +57,10 @@ async function attachQrCode(participant) {
   if (!participant.qr_image) {
     try {
       participant.qr_image = await QRCode.toDataURL(participant.code, {
-        width: 400,
-        margin: 2,
+        width: 450,
+        margin: 1,
         color: {
-          dark: '#0f172a',
+          dark: '#000000',
           light: '#ffffff'
         }
       });
