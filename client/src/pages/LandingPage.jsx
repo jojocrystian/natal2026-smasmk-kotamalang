@@ -59,12 +59,6 @@ export default function LandingPage() {
     }
   ];
 
-  const rundown = [
-    { time: '08:00 - 09:00', title: 'Registrasi & Presensi QR Code', desc: 'Penukaran presensi di meja registrasi pintu masuk' },
-    { time: '09:00 - 10:30', title: 'Ibadah Natal Bersama', desc: 'Pujian, penyembahan, dan khotbah Natal' },
-    { time: '10:30 - 12:00', title: 'Perayaan & Penampilan Siswa/i', desc: 'Pentas seni, paduan suara perwakilan sekolah, dan games' },
-    { time: '12:00 - 13:00', title: 'Doorprize & Ramah Tamah', desc: 'Pengundian doorprize, foto bersama, dan pembagian snack' }
-  ];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
@@ -271,68 +265,43 @@ export default function LandingPage() {
             </div>
           </section>
 
-          {/* Section: Susunan Acara & Ketentuan (Poin 18 & 19) */}
+          {/* Section: Ketentuan & Dress Code Peserta */}
           <section className="border-t border-slate-900 bg-slate-950/60 py-12 lg:py-16">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
               
               <div className="text-center max-w-2xl mx-auto space-y-2">
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  Informasi Lengkap Acara
+                  Ketentuan & Informasi Peserta
                 </h2>
                 <p className="text-sm text-slate-400">
-                  Persiapkan kehadiran Anda dengan menyimak susunan acara dan ketentuan peserta berikut ini.
+                  Persiapkan kehadiran Anda dengan menyimak ketentuan dan dress code peserta berikut ini.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                
-                {/* Rundown Acara */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-lg space-y-4">
-                  <div className="flex items-center gap-2.5 text-white font-bold text-lg border-b border-slate-800 pb-3">
-                    <Clock className="w-5 h-5 text-emerald-400" />
-                    <span>Susunan Acara (Rundown)</span>
-                  </div>
-                  <div className="space-y-4 pt-1">
-                    {rundown.map((item, idx) => (
-                      <div key={idx} className="flex gap-3.5 items-start">
-                        <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-xs font-bold shrink-0 mt-0.5">
-                          {item.time}
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-white">{item.title}</div>
-                          <div className="text-xs text-slate-400 mt-0.5">{item.desc}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {/* Ketentuan Peserta & Dress Code Card */}
+              <div className="max-w-3xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-4">
+                <div className="flex items-center gap-2.5 text-white font-bold text-lg border-b border-slate-800 pb-3">
+                  <UserCheck className="w-5 h-5 text-emerald-400" />
+                  <span>Ketentuan & Dress Code Peserta</span>
                 </div>
-
-                {/* Ketentuan Peserta & Dress Code */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-lg space-y-4">
-                  <div className="flex items-center gap-2.5 text-white font-bold text-lg border-b border-slate-800 pb-3">
-                    <UserCheck className="w-5 h-5 text-emerald-400" />
-                    <span>Ketentuan & Dress Code Peserta</span>
-                  </div>
-                  <ul className="space-y-3.5 text-xs sm:text-sm text-slate-300 pt-1">
-                    <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      <span><strong>Sasaran Peserta:</strong> Terbuka untuk seluruh siswa/i Kristen dan Katolik SMA & SMK se-Kota Malang serta guru pendamping.</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      <span><strong>Dress Code:</strong> Pakaian Bebas Rapi & Sopan bertema Natal (Nuansa Merah / Putih / Hijau / Hitam / Batik).</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      <span><strong>Tiket Masuk:</strong> Wajib membawa E-Tiket (PDF atau tangkapan layar QR Code) yang dapat diunduh di website ini.</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      <span><strong>Waktu Kehadiran:</strong> Dimohon hadir tepat waktu pukul 08.00 WIB untuk registrasi dan presensi QR.</span>
-                    </li>
-                  </ul>
-                </div>
-
+                <ul className="space-y-4 text-xs sm:text-sm text-slate-300 pt-1">
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong>Sasaran Peserta:</strong> Terbuka untuk seluruh siswa/i Kristen dan Katolik SMA & SMK se-Kota Malang serta guru pendamping.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong>Dress Code:</strong> Pakaian Bebas Rapi & Sopan bertema Natal (Nuansa Merah / Putih / Hijau / Hitam / Batik).</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong>Tiket Masuk:</strong> Wajib membawa E-Tiket resmi (file PDF atau tangkapan layar QR Code) yang dapat diunduh di website ini.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong>Waktu Kehadiran:</strong> Dimohon hadir tepat waktu pukul 08.00 WIB untuk registrasi dan presensi QR di meja pintu masuk.</span>
+                  </li>
+                </ul>
               </div>
 
             </div>
